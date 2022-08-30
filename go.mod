@@ -1,4 +1,4 @@
-module github.com/gardener/gardener-extension-shoot-networking-filter
+module github.com/Kristian-ZH/gardener-extension-logging
 
 go 1.18
 

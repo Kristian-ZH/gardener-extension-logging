@@ -7,7 +7,7 @@ package main
 import (
 	"os"
 
-	"github.com/gardener/gardener-extension-shoot-networking-filter/cmd/gardener-extension-shoot-networking-filter/app"
+	"github.com/Kristian-ZH/gardener-extension-logging/cmd/gardener-extension-logging/app"
 
 	"github.com/gardener/gardener/pkg/logger"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"

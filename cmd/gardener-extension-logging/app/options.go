@@ -17,7 +17,7 @@ const ExtensionName = "logging"
 // Options holds configuration passed to the Networking Policy Filter controller.
 type Options struct {
 	generalOptions     *controllercmd.GeneralOptions
-	loggingOptions     *loggingcmd.LoggingOptions
+	// loggingOptions     *loggingcmd.LoggingOptions
 	restOptions        *controllercmd.RESTOptions
 	managerOptions     *controllercmd.ManagerOptions
 	controllerOptions  *controllercmd.ControllerOptions
@@ -32,7 +32,7 @@ type Options struct {
 func NewOptions() *Options {
 	options := &Options{
 		generalOptions: &controllercmd.GeneralOptions{},
-		loggingOptions: &loggingcmd.LoggingOptions{},
+		// loggingOptions: &loggingcmd.LoggingOptions{},
 		restOptions:    &controllercmd.RESTOptions{},
 		managerOptions: &controllercmd.ManagerOptions{
 			// These are default values.
@@ -58,7 +58,7 @@ func NewOptions() *Options {
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(
 		options.generalOptions,
-		options.loggingOptions,
+		// options.loggingOptions,
 		options.restOptions,
 		options.managerOptions,
 		options.controllerOptions,
