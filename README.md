@@ -1,0 +1,1 @@
+# [Gardener Extension for Logging stack](https://gardener.cloud)
