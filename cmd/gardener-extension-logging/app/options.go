@@ -7,7 +7,6 @@ package app
 import (
 	"os"
 
-	loggingcmd "github.com/Kristian-ZH/gardener-extension-logging/pkg/cmd"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 )
 
@@ -16,7 +15,7 @@ const ExtensionName = "logging"
 
 // Options holds configuration passed to the Networking Policy Filter controller.
 type Options struct {
-	generalOptions     *controllercmd.GeneralOptions
+	generalOptions *controllercmd.GeneralOptions
 	// loggingOptions     *loggingcmd.LoggingOptions
 	restOptions        *controllercmd.RESTOptions
 	managerOptions     *controllercmd.ManagerOptions
@@ -33,7 +32,7 @@ func NewOptions() *Options {
 	options := &Options{
 		generalOptions: &controllercmd.GeneralOptions{},
 		// loggingOptions: &loggingcmd.LoggingOptions{},
-		restOptions:    &controllercmd.RESTOptions{},
+		restOptions: &controllercmd.RESTOptions{},
 		managerOptions: &controllercmd.ManagerOptions{
 			// These are default values.
 			LeaderElection:          true,
@@ -52,8 +51,8 @@ func NewOptions() *Options {
 			// This is a default value.
 			MaxConcurrentReconciles: 5,
 		},
-		reconcileOptions:   &controllercmd.ReconcilerOptions{},
-		controllerSwitches: loggingcmd.ControllerSwitches(),
+		reconcileOptions: &controllercmd.ReconcilerOptions{},
+		// controllerSwitches: loggingcmd.ControllerSwitches(),
 	}
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(
