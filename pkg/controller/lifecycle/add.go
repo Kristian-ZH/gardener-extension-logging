@@ -5,11 +5,20 @@
 package lifecycle
 
 import (
-	"time"
-
-	"github.com/gardener/gardener/extensions/pkg/controller/extension"
+	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
+	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+const (
+	// FinalizerName is the dnsrecord controller finalizer.
+	FinalizerName = "extensions.gardener.cloud/logging"
+	// ControllerName is the name of the controller
+	ControllerName = "logging"
 )
 
 // DefaultAddOptions contains configuration for the mwe controller
@@ -17,6 +26,13 @@ var DefaultAddOptions = AddOptions{}
 
 // AddOptions are options to apply when adding the mwe controller to the manager.
 type AddOptions struct {
+	// Actuator is an dnsrecord actuator.
+	Actuator Actuator
+	// Predicates are the predicates to use.
+	// If unset, GenerationChangedPredicate will be used.
+	Predicates []predicate.Predicate
+	// Type is the type of the resource considered for reconciliation.
+	Type string
 	// ControllerOptions contains options for the controller.
 	ControllerOptions controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
@@ -25,13 +41,35 @@ type AddOptions struct {
 
 // AddToManager adds a mwe Lifecycle controller to the given Controller Manager.
 func AddToManager(mgr manager.Manager) error {
-	return extension.Add(mgr, extension.AddArgs{
+	return Add(mgr, AddOptions{
 		Actuator:          NewActuator(),
 		ControllerOptions: DefaultAddOptions.ControllerOptions,
-		Name:              "logging_lifecycle_controller",
-		FinalizerSuffix:   "logging",
-		Resync:            60 * time.Minute,
-		Predicates:        extension.DefaultPredicates(DefaultAddOptions.IgnoreOperationAnnotation),
-		Type:              "logging",
+		Predicates: extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation,
+			predicate.Or(
+				extensionspredicate.IsInGardenNamespacePredicate,
+				extensionspredicate.ShootNotFailedPredicate())),
+		Type: "logging",
 	})
+}
+
+func Add(mgr manager.Manager, args AddOptions) error {
+	args.ControllerOptions.Reconciler = NewReconciler(args.Actuator)
+	args.ControllerOptions.RecoverPanic = true
+
+	ctrl, err := controller.New(ControllerName, mgr, args.ControllerOptions)
+	if err != nil {
+		return err
+	}
+
+	predicates := extensionspredicate.AddTypePredicate(args.Predicates, args.Type)
+	// if args.IgnoreOperationAnnotation {
+	// 	if err := ctrl.Watch(
+	// 		&source.Kind{Type: &extensionsv1alpha1.Cluster{}},
+	// 		mapper.EnqueueRequestsFrom(ClusterToDNSRecordMapper(predicates), mapper.UpdateWithNew, ctrl.GetLogger()),
+	// 	); err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	return ctrl.Watch(&source.Kind{Type: &extensionsv1alpha1.Logging{}}, &handler.EnqueueRequestForObject{}, predicates...)
 }

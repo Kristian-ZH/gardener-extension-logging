@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/healthcheck"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
@@ -75,7 +74,7 @@ func (o *Options) run(ctx context.Context) error {
 	// ctrlConfig.Apply(&lifecycle.DefaultAddOptions.ServiceConfig)
 	o.controllerOptions.Completed().Apply(&lifecycle.DefaultAddOptions.ControllerOptions)
 	o.lifecycleOptions.Completed().Apply(&lifecycle.DefaultAddOptions.ControllerOptions)
-	o.healthOptions.Completed().Apply(&healthcheck.DefaultAddOptions.Controller)
+	// o.healthOptions.Completed().Apply(&healthcheck.DefaultAddOptions.Controller)
 
 	if err := o.controllerSwitches.Completed().AddToManager(mgr); err != nil {
 		return fmt.Errorf("could not add controllers to manager: %s", err)

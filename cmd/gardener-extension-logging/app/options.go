@@ -7,16 +7,16 @@ package app
 import (
 	"os"
 
+	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 )
 
 // ExtensionName is the name of the extension.
-const ExtensionName = "logging"
+const ExtensionName = "mwe"
 
-// Options holds configuration passed to the Networking Policy Filter controller.
+// Options holds configuration passed to the mwe controller.
 type Options struct {
-	generalOptions *controllercmd.GeneralOptions
-	// loggingOptions     *loggingcmd.LoggingOptions
+	generalOptions     *controllercmd.GeneralOptions
 	restOptions        *controllercmd.RESTOptions
 	managerOptions     *controllercmd.ManagerOptions
 	controllerOptions  *controllercmd.ControllerOptions
@@ -31,8 +31,7 @@ type Options struct {
 func NewOptions() *Options {
 	options := &Options{
 		generalOptions: &controllercmd.GeneralOptions{},
-		// loggingOptions: &loggingcmd.LoggingOptions{},
-		restOptions: &controllercmd.RESTOptions{},
+		restOptions:    &controllercmd.RESTOptions{},
 		managerOptions: &controllercmd.ManagerOptions{
 			// These are default values.
 			LeaderElection:          true,
@@ -52,12 +51,12 @@ func NewOptions() *Options {
 			MaxConcurrentReconciles: 5,
 		},
 		reconcileOptions: &controllercmd.ReconcilerOptions{},
-		// controllerSwitches: loggingcmd.ControllerSwitches(),
+		controllerSwitches: controllercmd.NewSwitchOptions(
+			controllercmd.Switch("mwe_lifecycle_controller", lifecycle.AddToManager)),
 	}
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(
 		options.generalOptions,
-		// options.loggingOptions,
 		options.restOptions,
 		options.managerOptions,
 		options.controllerOptions,
