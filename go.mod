@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
-	github.com/gardener/gardener v1.52.2
+	github.com/gardener/gardener v1.54.0
 	github.com/go-logr/logr v1.2.3
 	github.com/spf13/cobra v1.4.0
 	golang.org/x/tools v0.1.12

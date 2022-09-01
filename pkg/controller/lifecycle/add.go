@@ -26,13 +26,15 @@ var DefaultAddOptions = AddOptions{}
 
 // AddOptions are options to apply when adding the mwe controller to the manager.
 type AddOptions struct {
-	// Actuator is an dnsrecord actuator.
-	Actuator Actuator
+	// SeedActuator is an seed actuator.
+	SeedActuator Actuator
+	// ShootActuator is an shoot actuator.
+	ShootActuator Actuator
 	// Predicates are the predicates to use.
 	// If unset, GenerationChangedPredicate will be used.
 	Predicates []predicate.Predicate
 	// Type is the type of the resource considered for reconciliation.
-	Type string
+	Types []string
 	// ControllerOptions contains options for the controller.
 	ControllerOptions controller.Options
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
@@ -42,18 +44,19 @@ type AddOptions struct {
 // AddToManager adds a mwe Lifecycle controller to the given Controller Manager.
 func AddToManager(mgr manager.Manager) error {
 	return Add(mgr, AddOptions{
-		Actuator:          NewActuator(),
+		SeedActuator:      NewSeedActuator(),
+		ShootActuator:     NewShootActuator(),
 		ControllerOptions: DefaultAddOptions.ControllerOptions,
 		Predicates: extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation,
 			predicate.Or(
 				extensionspredicate.IsInGardenNamespacePredicate,
 				extensionspredicate.ShootNotFailedPredicate())),
-		Type: "logging",
+		Types: []string{"seed", "shoot"},
 	})
 }
 
 func Add(mgr manager.Manager, args AddOptions) error {
-	args.ControllerOptions.Reconciler = NewReconciler(args.Actuator)
+	args.ControllerOptions.Reconciler = NewReconciler(args.SeedActuator, args.ShootActuator)
 	args.ControllerOptions.RecoverPanic = true
 
 	ctrl, err := controller.New(ControllerName, mgr, args.ControllerOptions)
@@ -61,7 +64,7 @@ func Add(mgr manager.Manager, args AddOptions) error {
 		return err
 	}
 
-	predicates := extensionspredicate.AddTypePredicate(args.Predicates, args.Type)
+	predicates := extensionspredicate.AddTypePredicate(args.Predicates, args.Types...)
 	// if args.IgnoreOperationAnnotation {
 	// 	if err := ctrl.Watch(
 	// 		&source.Kind{Type: &extensionsv1alpha1.Cluster{}},

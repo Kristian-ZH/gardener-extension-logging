@@ -20,18 +20,20 @@ import (
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 )
 
 type reconciler struct {
-	actuator Actuator
-
+	seedActuator  Actuator
+	shootActuator Actuator
 	client        client.Client
 	reader        client.Reader
 	statusUpdater extensionscontroller.StatusUpdaterCustom
@@ -39,18 +41,27 @@ type reconciler struct {
 
 // NewReconciler creates a new reconcile.Reconciler that reconciles
 // dnsrecord resources of Gardener's `extensions.gardener.cloud` API group.
-func NewReconciler(actuator Actuator) reconcile.Reconciler {
+func NewReconciler(seedActuator, shootActuator Actuator) reconcile.Reconciler {
 	return reconcilerutils.OperationAnnotationWrapper(
 		func() client.Object { return &extensionsv1alpha1.Logging{} },
 		&reconciler{
-			actuator:      actuator,
+			seedActuator:  seedActuator,
+			shootActuator: shootActuator,
 			statusUpdater: extensionscontroller.NewStatusUpdater(),
 		},
 	)
 }
 
 func (r *reconciler) InjectFunc(f inject.Func) error {
-	return f(r.actuator)
+	var err error
+	if err = f(r.seedActuator); err != nil {
+		return err
+	}
+	if err = f(r.shootActuator); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *reconciler) InjectClient(client client.Client) error {
@@ -77,7 +88,43 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		}
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
-	r.actuator.Reconcile(ctx, log, loggingResource)
+
+	if !controllerutil.ContainsFinalizer(loggingResource, FinalizerName) {
+		log.Info("Adding finalizer")
+		if err := controllerutils.AddFinalizers(ctx, r.client, loggingResource, FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+		}
+	}
+
+	// cluster, err := extensionscontroller.GetCluster(ctx, r.client, worker.Namespace)
+
+	switch {
+	// case extensionscontroller.ShouldSkipOperation(operationType, dns):
+	// 	return reconcile.Result{}, nil
+	// case operationType == gardencorev1beta1.LastOperationTypeMigrate:
+	// 	return r.migrate(ctx, log, dns, cluster)
+	case loggingResource.DeletionTimestamp != nil:
+		if loggingResource.Spec.Type == "seed" {
+			r.seedActuator.Delete(ctx, log, loggingResource)
+		} else {
+			r.shootActuator.Delete(ctx, log, loggingResource)
+		}
+
+		if controllerutil.ContainsFinalizer(loggingResource, FinalizerName) {
+			log.Info("Removing finalizer")
+			if err := controllerutils.RemoveFinalizers(ctx, r.client, loggingResource, FinalizerName); err != nil {
+				return reconcile.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			}
+		}
+	// case operationType == gardencorev1beta1.LastOperationTypeRestore:
+	// 	return r.restore(ctx, log, dns, cluster)
+	default:
+		if loggingResource.Spec.Type == "seed" {
+			r.seedActuator.Reconcile(ctx, log, loggingResource)
+		} else {
+			r.shootActuator.Reconcile(ctx, log, loggingResource)
+		}
+	}
 
 	return reconcile.Result{}, nil
 

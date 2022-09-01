@@ -53,7 +53,7 @@ github.com/fsnotify/fsnotify
 # github.com/gardener/etcd-druid v0.9.0
 ## explicit; go 1.17
 github.com/gardener/etcd-druid/api/v1alpha1
-# github.com/gardener/gardener v1.52.2 => github.com/Kristian-ZH/gardener v1.2.1-0.20220831135126-168675498efd
+# github.com/gardener/gardener v1.54.0 => github.com/Kristian-ZH/gardener v1.2.1-0.20220831135126-168675498efd
 ## explicit; go 1.19
 github.com/gardener/gardener/extensions/pkg/apis/config
 github.com/gardener/gardener/extensions/pkg/controller
@@ -97,6 +97,7 @@ github.com/gardener/gardener/pkg/gardenlet/apis/config/v1alpha1
 github.com/gardener/gardener/pkg/logger
 github.com/gardener/gardener/pkg/resourcemanager/controller/garbagecollector/references
 github.com/gardener/gardener/pkg/utils
+github.com/gardener/gardener/pkg/utils/chart
 github.com/gardener/gardener/pkg/utils/context
 github.com/gardener/gardener/pkg/utils/errors
 github.com/gardener/gardener/pkg/utils/flow
