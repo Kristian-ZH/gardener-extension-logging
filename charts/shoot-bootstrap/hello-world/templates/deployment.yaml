@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hello-world-shoot
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.replicas }}
   labels:
     app: hello-world
 spec:

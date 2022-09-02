@@ -19,10 +19,15 @@ import (
 	"fmt"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	reconcilerutils "github.com/gardener/gardener/pkg/controllerutils/reconciler"
+	"github.com/gardener/gardener/pkg/extensions"
+	"github.com/go-logr/logr"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -36,7 +41,7 @@ type reconciler struct {
 	shootActuator Actuator
 	client        client.Client
 	reader        client.Reader
-	statusUpdater extensionscontroller.StatusUpdaterCustom
+	statusUpdater extensionscontroller.StatusUpdater
 }
 
 // NewReconciler creates a new reconcile.Reconciler that reconciles
@@ -89,73 +94,25 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
-	if !controllerutil.ContainsFinalizer(loggingResource, FinalizerName) {
-		log.Info("Adding finalizer")
-		if err := controllerutils.AddFinalizers(ctx, r.client, loggingResource, FinalizerName); err != nil {
-			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+	var cluster *extensions.Cluster
+	var err error
+	if loggingResource.Spec.Type != "seed" {
+		cluster, err = extensionscontroller.GetCluster(ctx, r.client, loggingResource.Namespace)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		if extensionscontroller.IsFailed(cluster) {
+			log.Info("Skipping the reconciliation of Logging of failed shoot")
+			return reconcile.Result{}, nil
 		}
 	}
 
-	// cluster, err := extensionscontroller.GetCluster(ctx, r.client, worker.Namespace)
+	operationType := gardencorev1beta1helper.ComputeOperationType(loggingResource.ObjectMeta, loggingResource.Status.LastOperation)
 
-	switch {
-	// case extensionscontroller.ShouldSkipOperation(operationType, dns):
-	// 	return reconcile.Result{}, nil
-	// case operationType == gardencorev1beta1.LastOperationTypeMigrate:
-	// 	return r.migrate(ctx, log, dns, cluster)
-	case loggingResource.DeletionTimestamp != nil:
-		if loggingResource.Spec.Type == "seed" {
-			r.seedActuator.Delete(ctx, log, loggingResource)
-		} else {
-			r.shootActuator.Delete(ctx, log, loggingResource)
-		}
-
-		if controllerutil.ContainsFinalizer(loggingResource, FinalizerName) {
-			log.Info("Removing finalizer")
-			if err := controllerutils.RemoveFinalizers(ctx, r.client, loggingResource, FinalizerName); err != nil {
-				return reconcile.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
-			}
-		}
-	// case operationType == gardencorev1beta1.LastOperationTypeRestore:
-	// 	return r.restore(ctx, log, dns, cluster)
-	default:
-		if loggingResource.Spec.Type == "seed" {
-			r.seedActuator.Reconcile(ctx, log, loggingResource)
-		} else {
-			r.shootActuator.Reconcile(ctx, log, loggingResource)
-		}
-	}
-
-	return reconcile.Result{}, nil
-
-	// dns := &extensionsv1alpha1.DNSRecord{}
-	// if err := r.client.Get(ctx, request.NamespacedName, dns); err != nil {
-	// 	if apierrors.IsNotFound(err) {
-	// 		log.V(1).Info("Object is gone, stop reconciling")
-	// 		return reconcile.Result{}, nil
-	// 	}
-	// 	return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
-	// }
-
-	// var cluster *extensions.Cluster
-	// if dns.Namespace != v1beta1constants.GardenNamespace {
-	// 	var err error
-	// 	cluster, err = extensionscontroller.GetCluster(ctx, r.client, dns.Namespace)
-	// 	if err != nil {
-	// 		return reconcile.Result{}, err
-	// 	}
-
-	// 	if extensionscontroller.IsFailed(cluster) {
-	// 		log.Info("Skipping the reconciliation of DNSRecord of failed shoot")
-	// 		return reconcile.Result{}, nil
-	// 	}
-	// }
-
-	// operationType := gardencorev1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
-
-	// if cluster != nil && cluster.Shoot != nil && dns.Name != cluster.Shoot.Name+"-"+v1beta1constants.DNSRecordOwnerName && operationType != gardencorev1beta1.LastOperationTypeMigrate {
-	// 	key := "dnsrecord:" + kutil.ObjectName(dns)
-	// 	ok, watchdogCtx, cleanup, err := common.GetOwnerCheckResultAndContext(ctx, r.client, dns.Namespace, cluster.Shoot.Name, key)
+	// if cluster.Shoot != nil && operationType != gardencorev1beta1.LastOperationTypeMigrate {
+	// 	key := "network:" + kutil.ObjectName(network)
+	// 	ok, watchdogCtx, cleanup, err := common.GetOwnerCheckResultAndContext(ctx, r.client, network.Namespace, cluster.Shoot.Name, key)
 	// 	if err != nil {
 	// 		return reconcile.Result{}, err
 	// 	} else if !ok {
@@ -167,208 +124,187 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 	// 	}
 	// }
 
-	// switch {
-	// case extensionscontroller.ShouldSkipOperation(operationType, dns):
-	// 	return reconcile.Result{}, nil
-	// case operationType == gardencorev1beta1.LastOperationTypeMigrate:
-	// 	return r.migrate(ctx, log, dns, cluster)
-	// case dns.DeletionTimestamp != nil:
-	// 	return r.delete(ctx, log, dns, cluster)
-	// case operationType == gardencorev1beta1.LastOperationTypeRestore:
-	// 	return r.restore(ctx, log, dns, cluster)
-	// default:
-	// 	return r.reconcile(ctx, log, dns, cluster, operationType)
-	// }
+	switch {
+	case extensionscontroller.ShouldSkipOperation(operationType, loggingResource):
+		return reconcile.Result{}, nil
+	case operationType == gardencorev1beta1.LastOperationTypeMigrate:
+		return r.migrate(ctx, log, loggingResource, cluster)
+	case loggingResource.DeletionTimestamp != nil:
+		return r.delete(ctx, log, loggingResource, cluster)
+	case operationType == gardencorev1beta1.LastOperationTypeRestore:
+		return r.restore(ctx, log, loggingResource, cluster)
+	default:
+		return r.reconcile(ctx, log, loggingResource, cluster, operationType)
+	}
 }
 
-// func (r *reconciler) reconcile(
-// 	ctx context.Context,
-// 	log logr.Logger,
-// 	dns *extensionsv1alpha1.DNSRecord,
-// 	cluster *extensionscontroller.Cluster,
-// 	operationType gardencorev1beta1.LastOperationType,
-// ) (
-// 	reconcile.Result,
-// 	error,
-// ) {
-// 	if !controllerutil.ContainsFinalizer(dns, FinalizerName) {
-// 		log.Info("Adding finalizer")
-// 		if err := controllerutils.AddFinalizers(ctx, r.client, dns, FinalizerName); err != nil {
-// 			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
-// 		}
-// 	}
+func (r *reconciler) reconcile(
+	ctx context.Context,
+	log logr.Logger,
+	logging *extensionsv1alpha1.Logging,
+	cluster *extensions.Cluster,
+	operationType gardencorev1beta1.LastOperationType,
+) (
+	reconcile.Result,
+	error,
+) {
+	if !controllerutil.ContainsFinalizer(logging, FinalizerName) {
+		log.Info("Adding finalizer")
+		if err := controllerutils.AddFinalizers(ctx, r.client, logging, FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+		}
+	}
 
-// 	if err := r.statusUpdater.ProcessingCustom(ctx, log, dns, operationType, "Reconciling the DNSRecord", nil); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+	if err := r.statusUpdater.Processing(ctx, log, logging, operationType, "Reconciling the Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	log.Info("Starting the reconciliation of DNSRecord")
-// 	if err := r.actuator.Reconcile(ctx, log, dns, cluster); err != nil {
-// 		_ = r.statusUpdater.ErrorCustom(ctx, log, dns, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling DNSRecord", addCreatedConditionFalse)
-// 		return reconcilerutils.ReconcileErr(err)
-// 	}
+	log.Info("Starting the reconciliation of logging")
+	if logging.Spec.Type == "seed" {
+		if err := r.seedActuator.Reconcile(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	} else {
+		if err := r.shootActuator.Reconcile(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	}
 
-// 	if err := r.statusUpdater.SuccessCustom(ctx, log, dns, operationType, "Successfully reconciled DNSRecord", addCreatedConditionTrue); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+	if err := r.statusUpdater.Success(ctx, log, logging, operationType, "Successfully reconciled Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	return reconcile.Result{}, nil
-// }
+	return reconcile.Result{}, nil
 
-// func (r *reconciler) restore(
-// 	ctx context.Context,
-// 	log logr.Logger,
-// 	dns *extensionsv1alpha1.DNSRecord,
-// 	cluster *extensionscontroller.Cluster,
-// ) (
-// 	reconcile.Result,
-// 	error,
-// ) {
-// 	if !controllerutil.ContainsFinalizer(dns, FinalizerName) {
-// 		log.Info("Adding finalizer")
-// 		if err := controllerutils.AddFinalizers(ctx, r.client, dns, FinalizerName); err != nil {
-// 			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
-// 		}
-// 	}
+}
 
-// 	if err := r.statusUpdater.ProcessingCustom(ctx, log, dns, gardencorev1beta1.LastOperationTypeRestore, "Restoring the DNSRecord", nil); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+func (r *reconciler) delete(
+	ctx context.Context,
+	log logr.Logger,
+	logging *extensionsv1alpha1.Logging,
+	cluster *extensions.Cluster,
+) (
+	reconcile.Result,
+	error,
+) {
+	if !controllerutil.ContainsFinalizer(logging, FinalizerName) {
+		log.Info("Deleting Logging causes a no-op as there is no finalizer")
+		return reconcile.Result{}, nil
+	}
 
-// 	log.Info("Starting the restoration of DNSRecord")
-// 	if err := r.actuator.Restore(ctx, log, dns, cluster); err != nil {
-// 		_ = r.statusUpdater.ErrorCustom(ctx, log, dns, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeRestore, "Error restoring DNSRecord", addCreatedConditionFalse)
-// 		return reconcilerutils.ReconcileErr(err)
-// 	}
+	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Deleting the Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	if err := r.statusUpdater.SuccessCustom(ctx, log, dns, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored DNSRecord", addCreatedConditionTrue); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+	log.Info("Starting the deletion of Logging")
+	if logging.Spec.Type == "seed" {
+		if err := r.seedActuator.Delete(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	} else {
+		if err := r.shootActuator.Delete(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	}
 
-// 	if err := extensionscontroller.RemoveAnnotation(ctx, r.client, dns, v1beta1constants.GardenerOperation); err != nil {
-// 		return reconcile.Result{}, fmt.Errorf("error removing annotation from DNSRecord: %+v", err)
-// 	}
+	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Successfully deleted Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	return reconcile.Result{}, nil
-// }
+	if controllerutil.ContainsFinalizer(logging, FinalizerName) {
+		log.Info("Removing finalizer")
+		if err := controllerutils.RemoveFinalizers(ctx, r.client, logging, FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+		}
+	}
 
-// func (r *reconciler) migrate(
-// 	ctx context.Context,
-// 	log logr.Logger,
-// 	dns *extensionsv1alpha1.DNSRecord,
-// 	cluster *extensionscontroller.Cluster,
-// ) (
-// 	reconcile.Result,
-// 	error,
-// ) {
-// 	if err := r.statusUpdater.ProcessingCustom(ctx, log, dns, gardencorev1beta1.LastOperationTypeMigrate, "Migrating the DNSRecord", nil); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+	return reconcile.Result{}, nil
+}
 
-// 	log.Info("Starting the migration of DNSRecord")
-// 	if err := r.actuator.Migrate(ctx, log, dns, cluster); err != nil {
-// 		_ = r.statusUpdater.ErrorCustom(ctx, log, dns, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating DNSRecord", nil)
-// 		return reconcilerutils.ReconcileErr(err)
-// 	}
+func (r *reconciler) migrate(
+	ctx context.Context,
+	log logr.Logger,
+	logging *extensionsv1alpha1.Logging,
+	cluster *extensions.Cluster,
+) (
+	reconcile.Result,
+	error,
+) {
+	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Migrating the Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	if err := r.statusUpdater.SuccessCustom(ctx, log, dns, gardencorev1beta1.LastOperationTypeMigrate, "Successfully migrated DNSRecord", nil); err != nil {
-// 		return reconcile.Result{}, err
-// 	}
+	if logging.Spec.Type == "seed" {
+		if err := r.seedActuator.Migrate(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	} else {
+		if err := r.shootActuator.Migrate(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	}
 
-// 	log.Info("Removing all finalizers")
-// 	if err := controllerutils.RemoveAllFinalizers(ctx, r.client, dns); err != nil {
-// 		return reconcile.Result{}, fmt.Errorf("error removing finalizers: %w", err)
-// 	}
+	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Successfully migrated Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	if err := extensionscontroller.RemoveAnnotation(ctx, r.client, dns, v1beta1constants.GardenerOperation); err != nil {
-// 		return reconcile.Result{}, fmt.Errorf("error removing annotation from DNSRecord: %+v", err)
-// 	}
+	log.Info("Removing all finalizers")
+	if err := controllerutils.RemoveAllFinalizers(ctx, r.client, logging); err != nil {
+		return reconcile.Result{}, fmt.Errorf("error removing finalizers: %w", err)
+	}
 
-// 	return reconcile.Result{}, nil
-// }
+	if err := extensionscontroller.RemoveAnnotation(ctx, r.client, logging, v1beta1constants.GardenerOperation); err != nil {
+		return reconcile.Result{}, fmt.Errorf("error removing annotation from Logging: %+v", err)
+	}
 
-// func (r *reconciler) delete(
-// 	ctx context.Context,
-// 	log logr.Logger,
-// 	dns *extensionsv1alpha1.DNSRecord,
-// 	cluster *extensionscontroller.Cluster,
-// ) (
-// 	reconcile.Result,
-// 	error,
-// ) {
-// 	if !controllerutil.ContainsFinalizer(dns, FinalizerName) {
-// 		log.Info("Deleting DNSRecord causes a no-op as there is no finalizer")
-// 		return reconcile.Result{}, nil
-// 	}
+	return reconcile.Result{}, nil
+}
 
-// 	switch getCreatedConditionStatus(dns.GetExtensionStatus()) {
-// 	case gardencorev1beta1.ConditionTrue, gardencorev1beta1.ConditionUnknown:
-// 		operationType := gardencorev1beta1helper.ComputeOperationType(dns.ObjectMeta, dns.Status.LastOperation)
-// 		if err := r.statusUpdater.ProcessingCustom(ctx, log, dns, operationType, "Deleting the DNSRecord", nil); err != nil {
-// 			return reconcile.Result{}, err
-// 		}
+func (r *reconciler) restore(
+	ctx context.Context,
+	log logr.Logger,
+	logging *extensionsv1alpha1.Logging,
+	cluster *extensions.Cluster,
+) (
+	reconcile.Result,
+	error,
+) {
+	if !controllerutil.ContainsFinalizer(logging, FinalizerName) {
+		log.Info("Adding finalizer")
+		if err := controllerutils.AddFinalizers(ctx, r.client, logging, FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to add finalizer: %w", err)
+		}
+	}
 
-// 		log.Info("Starting the deletion of DNSRecord")
-// 		if err := r.actuator.Delete(ctx, log, dns, cluster); err != nil {
-// 			_ = r.statusUpdater.ErrorCustom(ctx, log, dns, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error deleting DNSRecord", nil)
-// 			return reconcilerutils.ReconcileErr(err)
-// 		}
+	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Restoring the Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 		if err := r.statusUpdater.SuccessCustom(ctx, log, dns, operationType, "Successfully deleted DNSRecord", nil); err != nil {
-// 			return reconcile.Result{}, err
-// 		}
-// 	case gardencorev1beta1.ConditionFalse:
-// 		log.Info("Deleting DNSRecord is no-op as not created")
-// 	}
+	if logging.Spec.Type == "seed" {
+		if err := r.seedActuator.Restore(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	} else {
+		if err := r.shootActuator.Restore(ctx, log, logging, cluster); err != nil {
+			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging")
+			return reconcilerutils.ReconcileErr(err)
+		}
+	}
 
-// 	if controllerutil.ContainsFinalizer(dns, FinalizerName) {
-// 		log.Info("Removing finalizer")
-// 		if err := controllerutils.RemoveFinalizers(ctx, r.client, dns, FinalizerName); err != nil {
-// 			return reconcile.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
-// 		}
-// 	}
+	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored Logging"); err != nil {
+		return reconcile.Result{}, err
+	}
 
-// 	return reconcile.Result{}, nil
-// }
+	if err := extensionscontroller.RemoveAnnotation(ctx, r.client, logging, v1beta1constants.GardenerOperation); err != nil {
+		return reconcile.Result{}, fmt.Errorf("error removing annotation from Logging: %+v", err)
+	}
 
-// func updateCreatedCondition(status extensionsv1alpha1.Status, conditionStatus gardencorev1beta1.ConditionStatus, reason, message string, updateIfExisting bool) error {
-// 	conditions := status.GetConditions()
-// 	c := gardencorev1beta1helper.GetCondition(conditions, extensionsv1alpha1.ConditionTypeCreated)
-// 	if c != nil && !updateIfExisting {
-// 		return nil
-// 	}
-// 	if c != nil && c.Status == conditionStatus {
-// 		return nil
-// 	}
-
-// 	builder, err := gardencorev1beta1helper.NewConditionBuilder(extensionsv1alpha1.ConditionTypeCreated)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if c != nil {
-// 		builder = builder.WithOldCondition(*c)
-// 	}
-
-// 	new, _ := builder.WithStatus(conditionStatus).WithReason(reason).WithMessage(message).Build()
-// 	status.SetConditions(gardencorev1beta1helper.MergeConditions(conditions, new))
-// 	return nil
-// }
-
-// func getCreatedConditionStatus(status extensionsv1alpha1.Status) gardencorev1beta1.ConditionStatus {
-// 	for _, c := range status.GetConditions() {
-// 		if c.Type == extensionsv1alpha1.ConditionTypeCreated {
-// 			return c.Status
-// 		}
-// 	}
-// 	return gardencorev1beta1.ConditionUnknown
-// }
-
-// func addCreatedConditionFalse(status extensionsv1alpha1.Status) error {
-// 	message := "Error on initial record creation in infrastructure"
-// 	return updateCreatedCondition(status, gardencorev1beta1.ConditionFalse, "Error", message, false)
-// }
-
-// func addCreatedConditionTrue(status extensionsv1alpha1.Status) error {
-// 	message := "Record was created successfully in infrastructure at least once"
-// 	return updateCreatedCondition(status, gardencorev1beta1.ConditionTrue, "Success", message, true)
-// }
+	return reconcile.Result{}, nil
+}

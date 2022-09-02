@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/extensions"
 
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/imagevector"
 	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
@@ -29,7 +30,7 @@ var (
 		Name: "hello-world",
 		Path: filepath.Join("charts/shoot-bootstrap", "hello-world"),
 		Objects: []*chart.Object{
-			{Type: &appsv1.Deployment{}, Name: "hello-world"},
+			{Type: &appsv1.Deployment{}, Name: "hello-world-shoot"},
 		},
 	}
 )
@@ -71,37 +72,41 @@ func (a *shootActuator) InjectClient(client client.Client) error {
 // NewActuator returns an actuator responsible for Extension resources.
 func NewShootActuator() Actuator {
 	return &shootActuator{
-		logger:      log.Log.WithName("logging actuator"),
+		logger:      log.Log.WithName("logging shoot actuator"),
 		chart:       shootChart,
 		imageVector: imagevector.ImageVector(),
 	}
 }
 
 // Reconcile the Extension resource.
-func (a *shootActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("Hello World, I just entered the Reconcile method")
-	fmt.Println("SHOOT Hello World, I just entered in the ACTUATOR")
-	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", map[string]interface{}{}); err != nil {
-		fmt.Println(err.Error())
+func (a *shootActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+	replicas := loggingReplicaFunc(cluster)
+	valuesMap := map[string]interface{}{
+		"replicas": replicas,
 	}
+
+	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", valuesMap); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // Delete the Extension resource.
-func (a *shootActuator) Delete(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("SHOOT Hello World, I just entered the Delete method")
+func (a *shootActuator) Delete(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
 	if err := a.chart.Delete(ctx, a.client, ex.Namespace); err != nil {
-		fmt.Println(err.Error())
+		return err
 	}
+
 	return nil
 }
 
 // Restore the Extension resource.
-func (a *shootActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	return a.Reconcile(ctx, log, ex)
+func (a *shootActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+	return a.Reconcile(ctx, log, ex, cluster)
 }
 
 // Migrate the Extension resource.
-func (a *shootActuator) Migrate(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	return a.Delete(ctx, log, ex)
+func (a *shootActuator) Migrate(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+	return a.Delete(ctx, log, ex, cluster)
 }

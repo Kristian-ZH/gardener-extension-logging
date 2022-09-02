@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/extensions"
 
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/imagevector"
 	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
@@ -29,7 +30,7 @@ var (
 		Name: "hello-world",
 		Path: filepath.Join("charts/seed-bootstrap", "hello-world"),
 		Objects: []*chart.Object{
-			{Type: &appsv1.Deployment{}, Name: "hello-world"},
+			{Type: &appsv1.Deployment{}, Name: "hello-world-seed"},
 		},
 	}
 )
@@ -71,40 +72,36 @@ func (a *seedActuator) InjectClient(client client.Client) error {
 // NewActuator returns an actuator responsible for Extension resources.
 func NewSeedActuator() Actuator {
 	return &seedActuator{
-		logger:      log.Log.WithName("logging actuator"),
+		logger:      log.Log.WithName("logging seed actuator"),
 		chart:       seedChart,
 		imageVector: imagevector.ImageVector(),
 	}
 }
 
 // Reconcile the Extension resource.
-func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("Hello World, I just entered the Reconcile method")
-	fmt.Println("SEED Hello World, I just entered in the ACTUATOR")
+func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
 	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", map[string]interface{}{}); err != nil {
-		fmt.Println(err.Error())
+		return err
 	}
+
 	return nil
 }
 
 // Delete the Extension resource.
-func (a *seedActuator) Delete(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("SEED ACTUATOR Delete method")
-	fmt.Println("NAMESPACE", ex.Namespace)
+func (a *seedActuator) Delete(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
 	if err := a.chart.Delete(ctx, a.client, ex.Namespace); err != nil {
-		fmt.Println(err.Error())
+		return err
 	}
+
 	return nil
 }
 
 // Restore the Extension resource.
-func (a *seedActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("SEED ACTUATOR Restore method")
-	return a.Reconcile(ctx, log, ex)
+func (a *seedActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+	return a.Reconcile(ctx, log, ex, cluster)
 }
 
 // Migrate the Extension resource.
-func (a *seedActuator) Migrate(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging) error {
-	a.logger.Info("SEED ACTUATOR Migrate method")
-	return a.Delete(ctx, log, ex)
+func (a *seedActuator) Migrate(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+	return a.Delete(ctx, log, ex, cluster)
 }
