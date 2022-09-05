@@ -53,11 +53,14 @@ github.com/fsnotify/fsnotify
 # github.com/gardener/etcd-druid v0.9.0
 ## explicit; go 1.17
 github.com/gardener/etcd-druid/api/v1alpha1
-# github.com/gardener/gardener v1.54.0 => github.com/Kristian-ZH/gardener v1.2.1-0.20220831135126-168675498efd
+# github.com/gardener/gardener v1.54.1 => github.com/Kristian-ZH/gardener v1.2.1-0.20220831135126-168675498efd
 ## explicit; go 1.19
 github.com/gardener/gardener/extensions/pkg/apis/config
+github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1
 github.com/gardener/gardener/extensions/pkg/controller
 github.com/gardener/gardener/extensions/pkg/controller/cmd
+github.com/gardener/gardener/extensions/pkg/controller/healthcheck
+github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general
 github.com/gardener/gardener/extensions/pkg/predicate
 github.com/gardener/gardener/extensions/pkg/util
 github.com/gardener/gardener/hack
@@ -90,10 +93,13 @@ github.com/gardener/gardener/pkg/chartrenderer
 github.com/gardener/gardener/pkg/client/kubernetes
 github.com/gardener/gardener/pkg/client/kubernetes/cache
 github.com/gardener/gardener/pkg/controllerutils
+github.com/gardener/gardener/pkg/controllerutils/mapper
+github.com/gardener/gardener/pkg/controllerutils/predicate
 github.com/gardener/gardener/pkg/controllerutils/reconciler
 github.com/gardener/gardener/pkg/extensions
 github.com/gardener/gardener/pkg/gardenlet/apis/config
 github.com/gardener/gardener/pkg/gardenlet/apis/config/v1alpha1
+github.com/gardener/gardener/pkg/healthz
 github.com/gardener/gardener/pkg/logger
 github.com/gardener/gardener/pkg/resourcemanager/controller/garbagecollector/references
 github.com/gardener/gardener/pkg/utils

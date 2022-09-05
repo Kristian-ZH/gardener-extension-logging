@@ -7,16 +7,18 @@ package app
 import (
 	"os"
 
+	loggingcmd "github.com/Kristian-ZH/gardener-extension-logging/pkg/cmd"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
 )
 
 // ExtensionName is the name of the extension.
-const ExtensionName = "mwe"
+const ExtensionName = "logging"
 
 // Options holds configuration passed to the mwe controller.
 type Options struct {
 	generalOptions     *controllercmd.GeneralOptions
+	loggingOptions     *loggingcmd.LoggingServiceOptions
 	restOptions        *controllercmd.RESTOptions
 	managerOptions     *controllercmd.ManagerOptions
 	controllerOptions  *controllercmd.ControllerOptions
@@ -32,11 +34,14 @@ func NewOptions() *Options {
 	options := &Options{
 		generalOptions: &controllercmd.GeneralOptions{},
 		restOptions:    &controllercmd.RESTOptions{},
+		loggingOptions: &loggingcmd.LoggingServiceOptions{},
 		managerOptions: &controllercmd.ManagerOptions{
 			// These are default values.
 			LeaderElection:          true,
 			LeaderElectionID:        controllercmd.LeaderElectionNameID(ExtensionName),
 			LeaderElectionNamespace: os.Getenv("LEADER_ELECTION_NAMESPACE"),
+			MetricsBindAddress:      ":8080",
+			HealthBindAddress:       ":8081",
 		},
 		controllerOptions: &controllercmd.ControllerOptions{
 			// This is a default value.
@@ -57,6 +62,7 @@ func NewOptions() *Options {
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(
 		options.generalOptions,
+		options.loggingOptions,
 		options.restOptions,
 		options.managerOptions,
 		options.controllerOptions,

@@ -5,6 +5,7 @@
 package lifecycle
 
 import (
+	controllerconfig "github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/config"
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -19,6 +20,8 @@ const (
 	FinalizerName = "extensions.gardener.cloud/logging"
 	// ControllerName is the name of the controller
 	ControllerName = "logging"
+	// Name is the name of the lifecycle controller.
+	Name = "logging_lifecycle_controller"
 )
 
 // DefaultAddOptions contains configuration for the mwe controller
@@ -37,6 +40,8 @@ type AddOptions struct {
 	Types []string
 	// ControllerOptions contains options for the controller.
 	ControllerOptions controller.Options
+	// ServiceConfig contains configuration for the shoot OIDC service.
+	ServiceConfig controllerconfig.Config
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
 	IgnoreOperationAnnotation bool
 }
@@ -44,8 +49,8 @@ type AddOptions struct {
 // AddToManager adds a mwe Lifecycle controller to the given Controller Manager.
 func AddToManager(mgr manager.Manager) error {
 	return Add(mgr, AddOptions{
-		SeedActuator:      NewSeedActuator(),
-		ShootActuator:     NewShootActuator(),
+		SeedActuator:      NewSeedActuator(DefaultAddOptions.ServiceConfig.Configuration),
+		ShootActuator:     NewShootActuator(DefaultAddOptions.ServiceConfig.Configuration),
 		ControllerOptions: DefaultAddOptions.ControllerOptions,
 		Predicates: extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation,
 			predicate.Or(

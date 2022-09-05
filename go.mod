@@ -4,12 +4,13 @@ go 1.18
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
-	github.com/gardener/gardener v1.54.0
+	github.com/gardener/gardener v1.54.1
 	github.com/go-logr/logr v1.2.3
 	github.com/spf13/cobra v1.4.0
 	golang.org/x/tools v0.1.12
 	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3
+	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/code-generator v0.24.3
 	k8s.io/component-base v0.24.3
 	sigs.k8s.io/controller-runtime v0.12.1
@@ -102,7 +103,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.24.3 // indirect
 	k8s.io/apiserver v0.24.3 // indirect
 	k8s.io/autoscaler/vertical-pod-autoscaler v0.11.0 // indirect
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
 	k8s.io/helm v2.16.1+incompatible // indirect
 	k8s.io/klog v1.0.0 // indirect

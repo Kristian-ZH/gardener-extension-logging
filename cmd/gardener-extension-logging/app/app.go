@@ -8,15 +8,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/healthcheck"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/util"
+	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	"k8s.io/component-base/version/verflag"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -69,15 +72,23 @@ func (o *Options) run(ctx context.Context) error {
 		return fmt.Errorf("could not update manager scheme: %s", err)
 	}
 
-	// ctrlConfig := o.loggingOptions.Completed()
-	// ctrlConfig.ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
-	// ctrlConfig.Apply(&lifecycle.DefaultAddOptions.ServiceConfig)
+	ctrlConfig := o.loggingOptions.Completed()
+	ctrlConfig.ApplyHealthCheckConfig(&healthcheck.DefaultAddOptions.HealthCheckConfig)
+	ctrlConfig.Apply(&lifecycle.DefaultAddOptions.ServiceConfig)
 	o.controllerOptions.Completed().Apply(&lifecycle.DefaultAddOptions.ControllerOptions)
 	o.lifecycleOptions.Completed().Apply(&lifecycle.DefaultAddOptions.ControllerOptions)
-	// o.healthOptions.Completed().Apply(&healthcheck.DefaultAddOptions.Controller)
+	o.healthOptions.Completed().Apply(&healthcheck.DefaultAddOptions.Controller)
 
 	if err := o.controllerSwitches.Completed().AddToManager(mgr); err != nil {
 		return fmt.Errorf("could not add controllers to manager: %s", err)
+	}
+
+	if err := mgr.AddReadyzCheck("informer-sync", gardenerhealthz.NewCacheSyncHealthz(mgr.GetCache())); err != nil {
+		return fmt.Errorf("could not add readycheck for informers: %w", err)
+	}
+
+	if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
+		return fmt.Errorf("could not add health check to manager: %w", err)
 	}
 
 	if err := mgr.Start(ctx); err != nil {

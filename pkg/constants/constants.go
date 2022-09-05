@@ -17,4 +17,6 @@ const (
 	NamespaceKubeSystem = "kube-system"
 	// ManagedResourceNamesShoot is the name used to describe the managed shoot resources.
 	ManagedResourceNamesShoot = extensionServiceName + "-shoot"
+	// ManagedResourceNamesSeed is the name used to describe the managed seed resources.
+	ManagedResourceNamesSeed = extensionServiceName + "-seed"
 )

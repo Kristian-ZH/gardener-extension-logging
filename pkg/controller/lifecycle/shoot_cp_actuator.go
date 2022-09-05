@@ -13,6 +13,7 @@ import (
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
 
+	"github.com/Kristian-ZH/gardener-extension-logging/pkg/apis/config"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/imagevector"
 	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/chart"
@@ -44,6 +45,7 @@ type shootActuator struct {
 	client            client.Client
 	clientset         kubernetes.Interface
 	gardenerClientset gardenerkubernetes.Interface
+	serviceConfig     config.Configuration
 }
 
 func (a *shootActuator) InjectConfig(config *rest.Config) error {
@@ -70,11 +72,12 @@ func (a *shootActuator) InjectClient(client client.Client) error {
 }
 
 // NewActuator returns an actuator responsible for Extension resources.
-func NewShootActuator() Actuator {
+func NewShootActuator(config config.Configuration) Actuator {
 	return &shootActuator{
-		logger:      log.Log.WithName("logging shoot actuator"),
-		chart:       shootChart,
-		imageVector: imagevector.ImageVector(),
+		logger:        log.Log.WithName("logging shoot actuator"),
+		chart:         shootChart,
+		imageVector:   imagevector.ImageVector(),
+		serviceConfig: config,
 	}
 }
 
