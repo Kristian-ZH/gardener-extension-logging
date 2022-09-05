@@ -6,7 +6,6 @@ package lifecycle
 
 import (
 	"context"
-	_ "embed"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
@@ -15,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// Actuator is the Actuator's interface
 type Actuator interface {
 	// Reconcile the Extension resource.
 	Reconcile(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error

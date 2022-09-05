@@ -6,7 +6,6 @@ package lifecycle
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"path/filepath"
 
@@ -71,7 +70,7 @@ func (a *shootActuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-// NewActuator returns an actuator responsible for Extension resources.
+// NewShootActuator returns an actuator responsible for the Shoot Logging stack.
 func NewShootActuator(config config.Configuration) Actuator {
 	return &shootActuator{
 		logger:        log.Log.WithName("logging shoot actuator"),

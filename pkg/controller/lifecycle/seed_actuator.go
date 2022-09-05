@@ -6,7 +6,6 @@ package lifecycle
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"path/filepath"
 
@@ -71,7 +70,7 @@ func (a *seedActuator) InjectClient(client client.Client) error {
 	return nil
 }
 
-// NewActuator returns an actuator responsible for Extension resources.
+// NewSeedActuator returns an actuator responsible for the Seed Logging stack.
 func NewSeedActuator(config config.Configuration) Actuator {
 	return &seedActuator{
 		logger:        log.Log.WithName("logging seed actuator"),

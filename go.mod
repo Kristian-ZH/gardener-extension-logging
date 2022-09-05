@@ -7,6 +7,7 @@ require (
 	github.com/gardener/gardener v1.54.1
 	github.com/go-logr/logr v1.2.3
 	github.com/spf13/cobra v1.4.0
+	github.com/spf13/pflag v1.0.5
 	golang.org/x/tools v0.1.12
 	k8s.io/api v0.24.3
 	k8s.io/apimachinery v0.24.3
@@ -78,7 +79,6 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.7.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect

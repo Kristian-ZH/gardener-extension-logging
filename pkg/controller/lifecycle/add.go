@@ -6,8 +6,10 @@ package lifecycle
 
 import (
 	controllerconfig "github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/config"
+	"github.com/gardener/gardener/extensions/pkg/controller/extension"
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/controllerutils/mapper"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -33,6 +35,8 @@ type AddOptions struct {
 	SeedActuator Actuator
 	// ShootActuator is an shoot actuator.
 	ShootActuator Actuator
+	// Name is the name of the controller.
+	Name string
 	// Predicates are the predicates to use.
 	// If unset, GenerationChangedPredicate will be used.
 	Predicates []predicate.Predicate
@@ -46,11 +50,12 @@ type AddOptions struct {
 	IgnoreOperationAnnotation bool
 }
 
-// AddToManager adds a mwe Lifecycle controller to the given Controller Manager.
+// AddToManager adds a logging Lifecycle controller to the given Controller Manager.
 func AddToManager(mgr manager.Manager) error {
 	return Add(mgr, AddOptions{
 		SeedActuator:      NewSeedActuator(DefaultAddOptions.ServiceConfig.Configuration),
 		ShootActuator:     NewShootActuator(DefaultAddOptions.ServiceConfig.Configuration),
+		Name:              Name,
 		ControllerOptions: DefaultAddOptions.ControllerOptions,
 		Predicates: extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation,
 			predicate.Or(
@@ -60,6 +65,7 @@ func AddToManager(mgr manager.Manager) error {
 	})
 }
 
+// Add creates the Reconciler and connects it to the resources
 func Add(mgr manager.Manager, args AddOptions) error {
 	args.ControllerOptions.Reconciler = NewReconciler(args.SeedActuator, args.ShootActuator)
 	args.ControllerOptions.RecoverPanic = true
@@ -70,14 +76,14 @@ func Add(mgr manager.Manager, args AddOptions) error {
 	}
 
 	predicates := extensionspredicate.AddTypePredicate(args.Predicates, args.Types...)
-	// if args.IgnoreOperationAnnotation {
-	// 	if err := ctrl.Watch(
-	// 		&source.Kind{Type: &extensionsv1alpha1.Cluster{}},
-	// 		mapper.EnqueueRequestsFrom(ClusterToDNSRecordMapper(predicates), mapper.UpdateWithNew, ctrl.GetLogger()),
-	// 	); err != nil {
-	// 		return err
-	// 	}
-	// }
+	if args.IgnoreOperationAnnotation {
+		if err := ctrl.Watch(
+			&source.Kind{Type: &extensionsv1alpha1.Cluster{}},
+			mapper.EnqueueRequestsFrom(extension.ClusterToExtensionMapper(predicates...), mapper.UpdateWithNew, mgr.GetLogger().WithName(args.Name)),
+		); err != nil {
+			return err
+		}
+	}
 
 	return ctrl.Watch(&source.Kind{Type: &extensionsv1alpha1.Logging{}}, &handler.EnqueueRequestForObject{}, predicates...)
 }
