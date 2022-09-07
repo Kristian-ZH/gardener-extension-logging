@@ -82,8 +82,6 @@ func (r *reconciler) InjectAPIReader(reader client.Reader) error {
 
 func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	log := logf.FromContext(ctx)
-	fmt.Println("I AM IN THE RECONCILER")
-	log.V(1).Info("TEST RECONCILING, name, namespace:" + request.Name + ", " + request.Namespace)
 
 	loggingResource := &extensionsv1alpha1.Logging{}
 	if err := r.client.Get(ctx, request.NamespacedName, loggingResource); err != nil {
@@ -101,28 +99,14 @@ func (r *reconciler) Reconcile(ctx context.Context, request reconcile.Request) (
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
-		if extensionscontroller.IsFailed(cluster) {
-			log.Info("Skipping the reconciliation of Logging of failed shoot")
-			return reconcile.Result{}, nil
-		}
+		// TODO: Discuss if this is needed
+		// if extensionscontroller.IsFailed(cluster) {
+		// 	log.Info("Skipping the reconciliation of Logging of failed shoot")
+		// 	return reconcile.Result{}, nil
+		// }
 	}
 
 	operationType := gardencorev1beta1helper.ComputeOperationType(loggingResource.ObjectMeta, loggingResource.Status.LastOperation)
-
-	// if cluster.Shoot != nil && operationType != gardencorev1beta1.LastOperationTypeMigrate {
-	// 	key := "network:" + kutil.ObjectName(network)
-	// 	ok, watchdogCtx, cleanup, err := common.GetOwnerCheckResultAndContext(ctx, r.client, network.Namespace, cluster.Shoot.Name, key)
-	// 	if err != nil {
-	// 		return reconcile.Result{}, err
-	// 	} else if !ok {
-	// 		return reconcile.Result{}, fmt.Errorf("this seed is not the owner of shoot %s", kutil.ObjectName(cluster.Shoot))
-	// 	}
-	// 	ctx = watchdogCtx
-	// 	if cleanup != nil {
-	// 		defer cleanup()
-	// 	}
-	// }
 
 	switch {
 	case extensionscontroller.ShouldSkipOperation(operationType, loggingResource):

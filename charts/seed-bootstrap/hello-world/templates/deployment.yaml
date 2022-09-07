@@ -18,4 +18,4 @@ spec:
     spec:
       containers:
       - name: hello-world
-        image: "hello-world:latest"
+        image: "nginx:latest"

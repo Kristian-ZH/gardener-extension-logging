@@ -5,11 +5,14 @@
 package lifecycle
 
 import (
+	"strings"
+
 	controllerconfig "github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/config"
 	"github.com/gardener/gardener/extensions/pkg/controller/extension"
 	extensionspredicate "github.com/gardener/gardener/extensions/pkg/predicate"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/controllerutils/mapper"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -28,6 +31,11 @@ const (
 
 // DefaultAddOptions contains configuration for the mwe controller
 var DefaultAddOptions = AddOptions{}
+
+// IsInGardenorShootNamespacePredicate is a predicate which returns true when the provided object is in the 'garden' or in the shoot namespaces.
+var IsInGardenorShootNamespacePredicate = predicate.NewPredicateFuncs(func(obj client.Object) bool {
+	return obj != nil && (obj.GetNamespace() == "garden" || strings.HasPrefix(obj.GetNamespace(), "shoot--"))
+})
 
 // AddOptions are options to apply when adding the mwe controller to the manager.
 type AddOptions struct {
@@ -57,11 +65,8 @@ func AddToManager(mgr manager.Manager) error {
 		ShootActuator:     NewShootActuator(DefaultAddOptions.ServiceConfig.Configuration),
 		Name:              Name,
 		ControllerOptions: DefaultAddOptions.ControllerOptions,
-		Predicates: extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation,
-			predicate.Or(
-				extensionspredicate.IsInGardenNamespacePredicate,
-				extensionspredicate.ShootNotFailedPredicate())),
-		Types: []string{"seed", "shoot"},
+		Predicates:        extensionspredicate.DefaultControllerPredicates(DefaultAddOptions.IgnoreOperationAnnotation, IsInGardenorShootNamespacePredicate),
+		Types:             []string{"seed", "shoot"},
 	})
 }
 

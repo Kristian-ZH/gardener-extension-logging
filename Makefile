@@ -97,7 +97,7 @@ test-clean:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/test-cover-clean.sh
 
 .PHONY: verify
-verify: check check-docforge format test
+verify: check format test
 
 .PHONY: verify-extended
-verify-extended: check-generate check check-docforge format test test-cov test-clean
+verify-extended: check-generate check format test test-cov test-clean
