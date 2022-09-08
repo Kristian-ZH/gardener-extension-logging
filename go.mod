@@ -16,7 +16,6 @@ require (
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/code-generator v0.24.3
 	k8s.io/component-base v0.24.3
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/controller-runtime v0.12.1
 )
 
@@ -120,6 +119,7 @@ require (
 	k8s.io/kube-aggregator v0.24.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/metrics v0.24.3 // indirect
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20220613074012-11e533d55213 // indirect
 	sigs.k8s.io/controller-tools v0.9.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
@@ -128,7 +128,7 @@ require (
 )
 
 replace (
-	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20220831135126-168675498efd
+	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20220908144330-108db1773c64
 	k8s.io/api => k8s.io/api v0.24.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.3
 	k8s.io/apiserver => k8s.io/apiserver v0.24.3

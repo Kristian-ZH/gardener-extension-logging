@@ -19,6 +19,9 @@ import (
 	gardeneriv "github.com/gardener/gardener/pkg/utils/imagevector"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,10 +30,21 @@ import (
 
 var (
 	seedChart = &chart.Chart{
-		Name: "hello-world",
-		Path: filepath.Join("charts/seed-bootstrap", "hello-world"),
-		Objects: []*chart.Object{
-			{Type: &appsv1.Deployment{}, Name: "hello-world-seed"},
+		Name: "seed-bootstrap",
+		Path: filepath.Join("charts", "seed-bootstrap"),
+		SubCharts: []*chart.Chart{
+			{
+				Name:   "fluent-bit",
+				Images: []string{"fluent-bit", "fluent-bit-plugin-installer", "alpine"},
+				Objects: []*chart.Object{
+					{Type: &appsv1.DaemonSet{}, Name: "fluent-bit"},
+					{Type: &networkingv1.NetworkPolicy{}, Name: "allow-fluentbit"},
+					{Type: &rbacv1.ClusterRole{}, Name: "fluent-bit-read"},
+					{Type: &rbacv1.ClusterRoleBinding{}, Name: "fluent-bit-read"},
+					{Type: &corev1.ServiceAccount{}, Name: "fluent-bit"},
+					{Type: &corev1.Service{}, Name: "fluent-bit"},
+				},
+			},
 		},
 	}
 )
@@ -82,7 +96,13 @@ func NewSeedActuator(config config.Configuration) Actuator {
 
 // Reconcile the Extension resource.
 func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
-	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", map[string]interface{}{}); err != nil {
+	values := map[string]interface{}{
+		"fluent-bit": map[string]interface{}{
+			"additionalFilters": ex.Spec.FluentBit.AdditionalFilters,
+			"additionalParsers": ex.Spec.FluentBit.AdditionalParsers,
+		},
+	}
+	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", values); err != nil {
 		return err
 	}
 

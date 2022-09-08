@@ -4,7 +4,14 @@
 
 ---
 images:
-- name: hello-world
-  sourceRepository: github.com/docker-library/hello-world
-  repository: hello-world
-  tag: "latest"
+- name: fluent-bit
+  sourceRepository: github.com/fluent/fluent-bit
+  repository: fluent/fluent-bit
+  tag: "1.9.7"
+- name: fluent-bit-plugin-installer
+  sourceRepository: github.com/gardener/logging
+  repository: eu.gcr.io/gardener-project/gardener/fluent-bit-to-loki
+  tag: "v0.42.0"
+- name: alpine
+  repository: alpine
+  tag: "3.15.4"

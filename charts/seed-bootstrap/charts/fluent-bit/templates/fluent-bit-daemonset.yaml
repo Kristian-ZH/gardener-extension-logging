@@ -1,0 +1,133 @@
+{{- define "fluent-bit.daemonset.annotations" -}}
+reference.resources.gardener.cloud/configmap-{{ include "fluent-bit.config.name" . | sha256sum | trunc 8 }}: {{ include "fluent-bit.config.name" . }}
+{{- end -}}
+---
+apiVersion: {{ include "daemonsetversion" . }}
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ toYaml .Values.labels | indent 4 }}
+  annotations:
+{{ include "fluent-bit.daemonset.annotations" . | indent 4 }}
+spec:
+  serviceName: fluent-bit
+  selector:
+    matchLabels:
+{{ toYaml .Values.labels | indent 6 }}
+  template:
+    metadata:
+      annotations:
+{{ include "fluent-bit.daemonset.annotations" . | indent 8 }}
+      labels:
+{{ toYaml .Values.labels | indent 8 }}
+        networking.gardener.cloud/to-dns: allowed
+        networking.gardener.cloud/to-seed-apiserver: allowed
+    spec:
+      initContainers:
+      - name: install-plugin
+        image: {{ index .Values.images "fluent-bit-plugin-installer" }}
+        command:
+        - cp
+        - /source/plugins/.
+        - /plugins
+        - -fr
+        volumeMounts:
+        - name: plugins
+          mountPath: "/plugins"
+      - name: journald-config
+        image: {{ index .Values.images "alpine" }}
+        command:
+        - sh
+        - "-c"
+        - |
+          JOURNALD_PATH="/var/log/journal"
+          if [ ! -d ${JOURNALD_PATH} ]; then
+              JOURNALD_PATH="/run/log/journal"
+          fi
+          cp -rL /template-config/* /fluent-bit-config/
+          sed -i "s|%%JOURNALD_PATH%%|${JOURNALD_PATH}|g" /fluent-bit-config/input.conf
+        volumeMounts:
+        - name: template-config
+          mountPath: /template-config
+        - name: config-dir
+          mountPath: /fluent-bit-config
+        - name: varlog
+          mountPath: /var/log
+      priorityClassName: gardener-system-600
+      containers:
+      - name: fluent-bit
+        image: {{ index .Values.images "fluent-bit" }}
+        command:
+          - /fluent-bit/bin/fluent-bit
+          - -e
+          - /fluent-bit/plugins/out_loki.so
+          - -c
+          - /fluent-bit/etc/fluent-bit.conf
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        resources:
+          limits:
+            memory: 400Mi
+          requests:
+            cpu: 150m
+            memory: 150Mi
+        ports:
+        - name: metrics
+          containerPort: {{ .Values.ports.metrics }}
+          protocol: TCP
+        - name: metrics-plugin
+          containerPort: {{ .Values.ports.outputPluginMetrics }}
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /api/v1/metrics/prometheus
+            port: 2020
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 2021
+          initialDelaySeconds: 90
+          periodSeconds: 300
+        volumeMounts:
+        - name: config-dir
+          mountPath: /fluent-bit/etc
+        - name: varlog
+          mountPath: /var/log
+        - name: runlogjournal
+          mountPath: /run/log/journal
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: plugins
+          mountPath: /fluent-bit/plugins
+      serviceAccount: fluent-bit
+      serviceAccountName: fluent-bit
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      volumes:
+      - name: template-config
+        configMap:
+          name: {{ include "fluent-bit.config.name" . }}
+      - name: config-dir
+        emptyDir: {}
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: runlogjournal
+        hostPath:
+          path: /run/log/journal
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: plugins
+        emptyDir: {}

@@ -68,6 +68,12 @@ type LoggingList struct {
 type LoggingSpec struct {
 	// DefaultSpec is a structure containing common fields used by all extension resources.
 	DefaultSpec `json:",inline"`
+	FluentBit   FluentBitSpec `json:"fluentBit,omitempty"`
+}
+
+type FluentBitSpec struct {
+	AdditionalFilters string `json:"additionalFilters"`
+	AdditionalParsers string `json:"additionalParsers"`
 }
 
 // ExtensionStatus is the status for a Logging resource.

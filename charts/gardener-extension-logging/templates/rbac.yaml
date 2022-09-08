@@ -58,6 +58,7 @@ rules:
   - mutatingwebhookconfigurations
   - customresourcedefinitions
   - networkpolicies
+  - daemonsets
   verbs:
   - "*"
 - apiGroups:
