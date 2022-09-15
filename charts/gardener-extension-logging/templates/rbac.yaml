@@ -59,6 +59,9 @@ rules:
   - customresourcedefinitions
   - networkpolicies
   - daemonsets
+  - statefulsets
+  - persistentvolumeclaims
+  - ingresses
   verbs:
   - "*"
 - apiGroups:

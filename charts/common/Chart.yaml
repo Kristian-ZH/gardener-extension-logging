@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart with common components for the seed and shoot
+name: common
+version: 0.1.0

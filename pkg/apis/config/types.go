@@ -12,10 +12,14 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Configuration contains information about the oidc service configuration.
+// Configuration contains information about the logging service configuration.
 type Configuration struct {
 	metav1.TypeMeta
-
+	// ShootPurposesWithNodeLogging are the shoot purposes for which there will be installed node logging.
+	ShootPurposesWithNodeLogging []string
 	// HealthCheckConfig is the config for the health check controller.
 	HealthCheckConfig *healthcheckconfig.HealthCheckConfig
+	// FeatureGates is a map of feature names to bools that enable features.
+	// Default: nil
+	FeatureGates map[string]bool
 }

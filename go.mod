@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
-	github.com/gardener/gardener v1.54.1
+	github.com/gardener/gardener v1.55.0
 	github.com/go-logr/logr v1.2.3
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.1
@@ -16,6 +16,7 @@ require (
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
 	k8s.io/code-generator v0.24.3
 	k8s.io/component-base v0.24.3
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/controller-runtime v0.12.1
 )
 
@@ -29,6 +30,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bronze1man/yaml2json v0.0.0-20211227013850-8972abeaea25 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
@@ -37,8 +39,10 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/gardener/dependency-watchdog v0.7.0 // indirect
 	github.com/gardener/etcd-druid v0.9.0 // indirect
 	github.com/gardener/hvpa-controller/api v0.5.0 // indirect
+	github.com/gardener/machine-controller-manager v0.45.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
@@ -84,9 +88,9 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
@@ -112,14 +116,16 @@ require (
 	k8s.io/apiextensions-apiserver v0.24.3 // indirect
 	k8s.io/apiserver v0.24.3 // indirect
 	k8s.io/autoscaler/vertical-pod-autoscaler v0.11.0 // indirect
+	k8s.io/cluster-bootstrap v0.24.3 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
 	k8s.io/helm v2.16.1+incompatible // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-aggregator v0.24.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
+	k8s.io/kube-proxy v0.24.3 // indirect
+	k8s.io/kubelet v0.24.3 // indirect
 	k8s.io/metrics v0.24.3 // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20220613074012-11e533d55213 // indirect
 	sigs.k8s.io/controller-tools v0.9.0 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
@@ -128,7 +134,7 @@ require (
 )
 
 replace (
-	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20220908144330-108db1773c64
+	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20220909103644-620079eace7e
 	k8s.io/api => k8s.io/api v0.24.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.3
 	k8s.io/apiserver => k8s.io/apiserver v0.24.3

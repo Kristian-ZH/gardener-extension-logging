@@ -43,3 +43,11 @@ metrics:
   enableScraping: true
 
 healthPort: 8081
+
+config:
+  shootPurposesWithNodeLogging:
+    - "evaluation"
+    - "development"
+  featureGates:
+    shootNodeLoggingEnabled: true
+    eventLoggingEnabled: true

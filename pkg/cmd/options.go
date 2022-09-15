@@ -52,6 +52,7 @@ func (o *LoggingServiceOptions) Complete() error {
 	if o.ConfigLocation == "" {
 		return errors.New("config location is not set")
 	}
+
 	data, err := os.ReadFile(o.ConfigLocation)
 	if err != nil {
 		return err

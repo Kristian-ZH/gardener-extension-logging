@@ -12,3 +12,11 @@ data:
   config.yaml: |
     apiVersion: logging.extensions.config.gardener.cloud/v1alpha1
     kind: Configuration
+{{- if .Values.config.shootPurposesWithNodeLogging }}
+    shootPurposesWithNodeLogging:
+{{ toYaml .Values.config.shootPurposesWithNodeLogging | indent 6 }}
+{{- end }}
+{{- if .Values.config.featureGates }}
+    featureGates:
+{{ toYaml .Values.config.featureGates | indent 6 }}
+{{- end }}

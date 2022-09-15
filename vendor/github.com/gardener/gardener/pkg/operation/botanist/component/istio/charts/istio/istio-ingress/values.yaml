@@ -1,0 +1,20 @@
+labels:
+  app: istio-ingressgateway
+annotations: {}
+image: to-be-injected-by-imagevector
+trustDomain: cluster.local
+istiodNamespace: istio-system
+deployNamespace: false
+serviceType: LoadBalancer
+# loadBalancerIP: 1.2.3.4
+ports: []
+# ports:
+# - name: tls
+#   port: 443
+#   targetPort: 443
+#
+#- name: tcp
+#  port: 8443
+#  targetPort: 8443
+serviceName: istio-ingressgateway
+ingressVersion: "1.14.1"

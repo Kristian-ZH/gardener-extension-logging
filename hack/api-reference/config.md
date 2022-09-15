@@ -15,7 +15,7 @@ Resource Types:
 <h3 id="logging.extensions.config.gardener.cloud/v1alpha1.Configuration">Configuration
 </h3>
 <p>
-<p>Configuration contains information about the OIDC service configuration.</p>
+<p>Configuration contains information about the Logging service configuration.</p>
 </p>
 <table>
 <thead>
@@ -54,6 +54,29 @@ github.com/gardener/gardener/extensions/pkg/apis/config/v1alpha1.HealthCheckConf
 <td>
 <em>(Optional)</em>
 <p>HealthCheckConfig is the config for the health check controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>shootPurposesWithNodeLogging</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>ShootPurposesWithNodeLogging are the shoot purposes for which there will be installed node logging.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureGates</code></br>
+<em>
+map[string]bool
+</em>
+</td>
+<td>
+<p>FeatureGates is a map of feature names to bools that enable features.
+Default: nil</p>
 </td>
 </tr>
 </tbody>

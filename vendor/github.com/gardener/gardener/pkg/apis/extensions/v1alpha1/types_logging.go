@@ -68,12 +68,21 @@ type LoggingList struct {
 type LoggingSpec struct {
 	// DefaultSpec is a structure containing common fields used by all extension resources.
 	DefaultSpec `json:",inline"`
+	HvpaEnabled bool          `json:"hvpaEnabled,omitempty"`
+	Loki        LokiSpec      `json:"loki,omitempty"`
 	FluentBit   FluentBitSpec `json:"fluentBit,omitempty"`
 }
 
 type FluentBitSpec struct {
 	AdditionalFilters string `json:"additionalFilters"`
 	AdditionalParsers string `json:"additionalParsers"`
+}
+
+type LokiSpec struct {
+	Maintenance struct {
+		Begin string `json:"begin"`
+		End   string `json:"end"`
+	} `json:"maintenance"`
 }
 
 // ExtensionStatus is the status for a Logging resource.

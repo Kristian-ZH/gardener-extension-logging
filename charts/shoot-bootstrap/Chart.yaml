@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A Helm chart to bootstrap/prepare Shoot controlplanes
+name: shoot-bootstrap
+version: 0.1.0

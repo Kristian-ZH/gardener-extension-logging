@@ -15,3 +15,27 @@ images:
 - name: alpine
   repository: alpine
   tag: "3.15.4"
+- name: loki
+  sourceRepository: github.com/grafana/loki
+  repository: grafana/loki
+  tag: "2.2.1"
+- name: loki-curator
+  sourceRepository: github.com/gardener/logging
+  repository: eu.gcr.io/gardener-project/gardener/loki-curator
+  tag: "v0.42.0"
+- name: kube-rbac-proxy
+  sourceRepository: github.com/brancz/kube-rbac-proxy
+  repository: quay.io/brancz/kube-rbac-proxy
+  tag: v0.13.0
+- name: promtail
+  sourceRepository: github.com/grafana/loki
+  repository: "docker.io/grafana/promtail"
+  tag: "2.2.1"
+- name: telegraf
+  sourceRepository: github.com/gardener/logging
+  repository: eu.gcr.io/gardener-project/gardener/telegraf-iptables
+  tag: "v0.42.0"
+- name: event-logger
+  sourceRepository: github.com/gardener/logging
+  repository: eu.gcr.io/gardener-project/gardener/event-logger
+  tag: "v0.42.0"
