@@ -57,7 +57,7 @@ func NewOptions() *Options {
 		},
 		reconcileOptions: &controllercmd.ReconcilerOptions{},
 		controllerSwitches: controllercmd.NewSwitchOptions(
-			controllercmd.Switch("mwe_lifecycle_controller", lifecycle.AddToManager)),
+			controllercmd.Switch("logging_lifecycle_controller", lifecycle.AddToManager)),
 	}
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(

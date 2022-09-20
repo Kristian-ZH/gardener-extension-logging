@@ -100,9 +100,7 @@ func (l *eventLogger) Deploy(ctx context.Context) error {
 		return err
 	}
 
-	// TODO DEPLOY VPA
-	// return l.reconcileVPA(ctx)
-	return nil
+	return l.reconcileVPA(ctx)
 }
 
 func (l *eventLogger) Destroy(ctx context.Context) error {
@@ -116,8 +114,7 @@ func (l *eventLogger) Destroy(ctx context.Context) error {
 		l.emptyServiceAccount(),
 		l.emptyRole(),
 		l.emptyRoleBinding(),
-		// TODO DELETE VPA
-		// l.emptyVPA(),
+		l.emptyVPA(),
 		l.emptyDeployment(),
 	)
 }

@@ -38,6 +38,7 @@ rules:
   - admissionregistration.k8s.io
   - apiextensions.k8s.io
   - networking.k8s.io
+  - autoscaling.k8s.io
   resources:
   - namespaces
   - namespaces/finalizers
@@ -62,6 +63,7 @@ rules:
   - statefulsets
   - persistentvolumeclaims
   - ingresses
+  - verticalpodautoscalers
   verbs:
   - "*"
 - apiGroups:

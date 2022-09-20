@@ -16,6 +16,7 @@ import (
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
+	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	"k8s.io/component-base/version/verflag"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,6 +71,10 @@ func (o *Options) run(ctx context.Context) error {
 
 	if err := extensionscontroller.AddToScheme(mgr.GetScheme()); err != nil {
 		return fmt.Errorf("could not update manager scheme: %s", err)
+	}
+
+	if err := vpaautoscalingv1.AddToScheme(mgr.GetScheme()); err != nil {
+		return fmt.Errorf("could not update manager scheme with vpaautoscalingv1: %s", err)
 	}
 
 	ctrlConfig := o.loggingOptions.Completed()
