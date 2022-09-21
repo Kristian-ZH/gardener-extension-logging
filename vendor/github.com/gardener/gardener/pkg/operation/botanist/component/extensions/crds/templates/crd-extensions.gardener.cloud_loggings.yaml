@@ -93,6 +93,9 @@ spec:
           status:
             description: ExtensionStatus is the status for a Extension resource.
             properties:
+              grafanaDatasource:
+                type: string
+                description: The datasource which Grafana should use for talking with Loki
               conditions:
                 description: Conditions represents the latest available observations
                   of a Seed's current state.

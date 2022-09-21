@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
@@ -21,12 +23,15 @@ import (
 	"github.com/gardener/gardener/pkg/utils/chart"
 	gardeneriv "github.com/gardener/gardener/pkg/utils/imagevector"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/gardener/gardener/pkg/utils/timewindow"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +39,8 @@ import (
 )
 
 var (
+	rewriteTagRegex = regexp.MustCompile(`\$tag\s+(.+?)\s+user-exposed\.\$TAG\s+true`)
+
 	seedChart = &chart.Chart{
 		Name: "seed-bootstrap",
 		Path: filepath.Join("charts", "seed-bootstrap"),
@@ -123,11 +130,25 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 	hvpaEnabled := ex.Spec.HvpaEnabled
 
 	if hvpaEnabled {
+		shootInfo := &corev1.ConfigMap{}
 		maintenanceBegin := "220000-0000"
 		maintenanceEnd := "230000-0000"
-		if ex.Spec.Loki.Maintenance.Begin != "" && ex.Spec.Loki.Maintenance.End != "" {
-			maintenanceBegin = ex.Spec.Loki.Maintenance.Begin
-			maintenanceEnd = ex.Spec.Loki.Maintenance.End
+		if err := a.client.Get(ctx, kutil.Key(metav1.NamespaceSystem, v1beta1constants.ConfigMapNameShootInfo), shootInfo); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+		} else {
+			shootMaintenanceBegin, err := timewindow.ParseMaintenanceTime(shootInfo.Data["maintenanceBegin"])
+			if err != nil {
+				return err
+			}
+			maintenanceBegin = shootMaintenanceBegin.Add(1, 0, 0).Formatted()
+
+			shootMaintenanceEnd, err := timewindow.ParseMaintenanceTime(shootInfo.Data["maintenanceEnd"])
+			if err != nil {
+				return err
+			}
+			maintenanceEnd = shootMaintenanceEnd.Add(1, 0, 0).Formatted()
 		}
 
 		lokiValues["hvpa"] = map[string]interface{}{
@@ -154,16 +175,58 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 
 	lokiValues["priorityClassName"] = v1beta1constants.PriorityClassNameSeedSystem600
 
-	additionalFilters := ex.Spec.FluentBit.AdditionalFilters
-	additionalParsers := ex.Spec.FluentBit.AdditionalParsers
+	additionalFilters := strings.Builder{}
+	additionalParsers := strings.Builder{}
+
 	if isShootEventLoggerEnabled(a.serviceConfig) {
-		additionalFilters += eventlogger.Filter
+		additionalFilters.WriteString(eventlogger.Filter)
+	}
+
+	// Read extension provider specific logging configuration
+	existingConfigMaps := &corev1.ConfigMapList{}
+	if err := a.client.List(ctx, existingConfigMaps,
+		client.InNamespace(v1beta1constants.GardenNamespace),
+		client.MatchingLabels{v1beta1constants.LabelExtensionConfiguration: v1beta1constants.LabelLogging}); err != nil {
+		return err
+	}
+
+	// Need stable order before passing the dashboards to Grafana config to avoid unnecessary changes
+	kutil.ByName().Sort(existingConfigMaps)
+	modifyFilter := `
+    Name          modify
+    Match         kubernetes.*
+    Condition     Key_value_matches tag __PLACE_HOLDER__
+    Add           __gardener_multitenant_id__ operator;user
+`
+	// Read all filters and parsers coming from the extension provider configurations
+	for _, cm := range existingConfigMaps.Items {
+		// Remove the extensions rewrite_tag filters.
+		// TODO (vlvasilev): When all custom rewrite_tag filters are removed from the extensions this code snipped must be removed
+		flbFilters := cm.Data[v1beta1constants.FluentBitConfigMapKubernetesFilter]
+		tokens := strings.Split(flbFilters, "[FILTER]")
+		var sb strings.Builder
+		for _, token := range tokens {
+			if strings.Contains(token, "rewrite_tag") {
+				result := rewriteTagRegex.FindAllStringSubmatch(token, 1)
+				if len(result) < 1 || len(result[0]) < 2 {
+					continue
+				}
+				token = strings.Replace(modifyFilter, "__PLACE_HOLDER__", result[0][1], 1)
+			}
+			// In case we are processing the first token
+			if strings.TrimSpace(token) != "" {
+				sb.WriteString("[FILTER]")
+			}
+			sb.WriteString(token)
+		}
+		additionalFilters.WriteString(fmt.Sprintln(strings.TrimRight(sb.String(), " ")))
+		additionalParsers.WriteString(fmt.Sprintln(cm.Data[v1beta1constants.FluentBitConfigMapParser]))
 	}
 
 	values := map[string]interface{}{
 		"fluent-bit": map[string]interface{}{
-			"additionalFilters": additionalFilters,
-			"additionalParsers": additionalParsers,
+			"additionalFilters": additionalFilters.String(),
+			"additionalParsers": additionalParsers.String(),
 		},
 		"loki": lokiValues,
 	}

@@ -41,7 +41,7 @@ type reconciler struct {
 	shootActuator Actuator
 	client        client.Client
 	reader        client.Reader
-	statusUpdater extensionscontroller.StatusUpdater
+	statusUpdater extensionscontroller.StatusUpdaterCustom
 }
 
 // NewReconciler creates a new reconcile.Reconciler that reconciles
@@ -139,29 +139,38 @@ func (r *reconciler) reconcile(
 		}
 	}
 
-	if err := r.statusUpdater.Processing(ctx, log, logging, operationType, "Reconciling the Logging"); err != nil {
+	updateStatusFunc := func(status extensionsv1alpha1.Status) error {
+		loggingStatus := status.(*extensionsv1alpha1.LoggingStatus)
+		loggingStatus.GrafanaDatasource = `
+- name: loki
+  type: loki
+  access: proxy
+  url: http://loki.` + logging.Namespace + `.svc:3100`
+		return nil
+	}
+
+	if err := r.statusUpdater.ProcessingCustom(ctx, log, logging, operationType, "Reconciling the Logging", updateStatusFunc); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	log.Info("Starting the reconciliation of logging")
 	if logging.Spec.Type == "seed" {
 		if err := r.seedActuator.Reconcile(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
 		if err := r.shootActuator.Reconcile(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	if err := r.statusUpdater.Success(ctx, log, logging, operationType, "Successfully reconciled Logging"); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, operationType, "Successfully reconciled Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
-
 }
 
 func (r *reconciler) delete(
@@ -178,24 +187,24 @@ func (r *reconciler) delete(
 		return reconcile.Result{}, nil
 	}
 
-	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Deleting the Logging"); err != nil {
+	if err := r.statusUpdater.ProcessingCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Deleting the Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	log.Info("Starting the deletion of Logging")
 	if logging.Spec.Type == "seed" {
 		if err := r.seedActuator.Delete(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
 		if err := r.shootActuator.Delete(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error deleting Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Successfully deleted Logging"); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeDelete, "Successfully deleted Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -218,23 +227,23 @@ func (r *reconciler) migrate(
 	reconcile.Result,
 	error,
 ) {
-	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Migrating the Logging"); err != nil {
+	if err := r.statusUpdater.ProcessingCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Migrating the Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if logging.Spec.Type == "seed" {
 		if err := r.seedActuator.Migrate(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
 		if err := r.shootActuator.Migrate(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeMigrate, "Error migrating Loggng", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Successfully migrated Logging"); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeMigrate, "Successfully migrated Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -266,23 +275,33 @@ func (r *reconciler) restore(
 		}
 	}
 
-	if err := r.statusUpdater.Processing(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Restoring the Logging"); err != nil {
+	updateStatusFunc := func(status extensionsv1alpha1.Status) error {
+		loggingStatus := status.(*extensionsv1alpha1.LoggingStatus)
+		loggingStatus.GrafanaDatasource = `
+- name: loki
+  type: loki
+  access: proxy
+  url: http://loki.` + logging.Namespace + `.svc:3100`
+		return nil
+	}
+
+	if err := r.statusUpdater.ProcessingCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Restoring the Logging", updateStatusFunc); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	if logging.Spec.Type == "seed" {
 		if err := r.seedActuator.Restore(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
 		if err := r.shootActuator.Restore(ctx, log, logging, cluster); err != nil {
-			_ = r.statusUpdater.Error(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging")
+			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	if err := r.statusUpdater.Success(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored Logging"); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 

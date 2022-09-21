@@ -6,14 +6,7 @@ apiVersion: extensions.gardener.cloud/v1alpha1
 kind: Logging
 metadata:
   name: test-logging-1
-  namespace: shoot--i355448--local-shoot
+  namespace: garden
 spec:
-  type: shoot
-  fluentBit:
-    additionalFilters: |-
-      # [FILTER]
-      #     Name                parser
-      #     Match               test
-      #     Key_Name            log
-      #     Parser              test
-      #     Reserve_Data        True
+  type: seed
+  hvpaEnabled: true
