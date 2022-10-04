@@ -14,6 +14,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/extensions"
+	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	versionutils "github.com/gardener/gardener/pkg/utils/version"
 
 	"github.com/go-logr/logr"
@@ -22,11 +23,11 @@ import (
 // Actuator is the Actuator's interface
 type Actuator interface {
 	// Reconcile the Extension resource.
-	Reconcile(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
+	Reconcile(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) (error, []extensionsv1alpha1.Unit, []extensionsv1alpha1.File)
 	// Delete the Extension resource.
 	Delete(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 	// Restore the Extension resource.
-	Restore(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
+	Restore(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) (error,  []extensionsv1alpha1.Unit, []extensionsv1alpha1.File)
 	// Migrate the Extension resource.
 	Migrate(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 }
@@ -95,4 +96,19 @@ func ComputeNginxIngressClass(seed *v1beta1.Seed, kubernetesVersion *string) (st
 		return v1beta1constants.SeedNginxIngressClass, nil
 	}
 	return v1beta1constants.NginxIngressClass, nil
+}
+
+// ComputeOutOfClusterAPIServerAddress returns the external address for the shoot API server depending on whether
+// the caller wants to use the internal cluster domain and whether DNS is disabled on this seed.
+func ComputeOutOfClusterAPIServerAddress(shoot *v1beta1.Shoot, seed *v1beta1.Seed) string {
+	externalClusterDoimain := ConstructExternalClusterDomain(shoot)
+
+	return gutil.GetAPIServerDomain(*externalClusterDoimain)
+}
+
+func ConstructExternalClusterDomain(shoot *v1beta1.Shoot) *string {
+	if shoot.Spec.DNS == nil || shoot.Spec.DNS.Domain == nil {
+		return nil
+	}
+	return shoot.Spec.DNS.Domain
 }

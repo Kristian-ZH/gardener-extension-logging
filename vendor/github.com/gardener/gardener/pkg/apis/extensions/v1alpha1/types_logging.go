@@ -76,4 +76,6 @@ type LoggingStatus struct {
 	// DefaultStatus is a structure containing common fields used by all extension resources.
 	DefaultStatus     `json:",inline"`
 	GrafanaDatasource string `json:"grafanaDatasource,omitempty"`
+	Files             []File `json:"files,omitempty"`
+	Units             []Unit `json:"units,omitempty"`
 }

@@ -6,7 +6,7 @@ apiVersion: extensions.gardener.cloud/v1alpha1
 kind: Logging
 metadata:
   name: test-logging-1
-  namespace: garden
+  namespace: shoot--i355448--local-shoot
 spec:
-  type: seed
+  type: shoot
   hvpaEnabled: true

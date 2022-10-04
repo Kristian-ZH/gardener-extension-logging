@@ -15,14 +15,14 @@
 package promtail
 
 import (
+	"context"
 	"fmt"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
-	"github.com/gardener/gardener/pkg/operation/botanist/component/extensions/operatingsystemconfig/original/components"
 	"github.com/gardener/gardener/pkg/operation/botanist/component/extensions/operatingsystemconfig/original/components/docker"
-	"github.com/gardener/gardener/pkg/utils/images"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -66,22 +66,22 @@ func execStartPreCopyBinaryFromContainer(binaryName string, image *imagevector.I
 	return docker.PathBinary + ` run --rm -v ` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `:` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `:rw --entrypoint /bin/sh ` + image.String() + ` -c "cp /usr/bin/` + binaryName + ` ` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `"`
 }
 
-func (component) Config(ctx components.Context) ([]extensionsv1alpha1.Unit, []extensionsv1alpha1.File, error) {
-if !ctx.PromtailEnabled {
-	return []extensionsv1alpha1.Unit{
-		getPromtailUnit(
-			"/bin/systemctl disable "+UnitName,
-			`/bin/sh -c "echo 'service does not have configuration'"`,
-			fmt.Sprintf(`/bin/sh -c "echo service %s is removed!; while true; do sleep 86400; done"`, UnitName),
-		),
-		getFetchTokenScriptUnit(
-			"/bin/systemctl disable "+unitNameFetchToken,
-			fmt.Sprintf(`/bin/sh -c "rm -f `+PathAuthToken+`; echo service %s is removed!; while true; do sleep 86400; done"`, unitNameFetchToken),
-		),
-	}, nil, nil
+func (component) Config(ctx context.Context, nodeLoggingEnabled bool, promtailImage *imagevector.Image, caBundle *corev1.Secret, lokiIngress, apiServerURL string) ([]extensionsv1alpha1.Unit, []extensionsv1alpha1.File, error) {
+	if !nodeLoggingEnabled {
+		return []extensionsv1alpha1.Unit{
+			getPromtailUnit(
+				"/bin/systemctl disable "+UnitName,
+				`/bin/sh -c "echo 'service does not have configuration'"`,
+				fmt.Sprintf(`/bin/sh -c "echo service %s is removed!; while true; do sleep 86400; done"`, UnitName),
+			),
+			getFetchTokenScriptUnit(
+				"/bin/systemctl disable "+unitNameFetchToken,
+				fmt.Sprintf(`/bin/sh -c "rm -f `+PathAuthToken+`; echo service %s is removed!; while true; do sleep 86400; done"`, unitNameFetchToken),
+			),
+		}, nil, nil
 	}
 
-	promtailConfigFile, err := getPromtailConfigurationFile(ctx)
+	promtailConfigFile, err := getPromtailConfigurationFile(ctx, lokiIngress, apiServerURL)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -93,7 +93,7 @@ if !ctx.PromtailEnabled {
 
 	return []extensionsv1alpha1.Unit{
 			getPromtailUnit(
-				execStartPreCopyBinaryFromContainer("promtail", ctx.Images[images.ImageNamePromtail]),
+				execStartPreCopyBinaryFromContainer("promtail", promtailImage),
 				"/bin/sh "+PathSetActiveJournalFileScript,
 				v1beta1constants.OperatingSystemConfigFilePathBinaries+`/promtail -config.file=`+PathConfig,
 			),
@@ -105,7 +105,7 @@ if !ctx.PromtailEnabled {
 		[]extensionsv1alpha1.File{
 			promtailConfigFile,
 			fetchTokenScriptFile,
-			getPromtailCAFile(ctx),
+			getPromtailCAFile(ctx, caBundle.Data["bundle.crt"]),
 			setActiveJournalFile(),
 		}, nil
 }

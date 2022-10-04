@@ -3,6 +3,7 @@ module github.com/Kristian-ZH/gardener-extension-logging
 go 1.18
 
 require (
+	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/gardener/gardener v1.55.0
 	github.com/go-logr/logr v1.2.3
@@ -25,7 +26,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -134,7 +134,7 @@ require (
 )
 
 replace (
-	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20220921074909-4935b99fcc14
+	github.com/gardener/gardener => github.com/Kristian-ZH/gardener v1.2.1-0.20221003123721-1ad41debeb17
 	k8s.io/api => k8s.io/api v0.24.3
 	k8s.io/apimachinery => k8s.io/apimachinery v0.24.3
 	k8s.io/apiserver => k8s.io/apiserver v0.24.3

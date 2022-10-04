@@ -117,14 +117,14 @@ func NewSeedActuator(config config.Configuration) Actuator {
 }
 
 // Reconcile the Extension resource.
-func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) (error, []extensionsv1alpha1.Unit, []extensionsv1alpha1.File) {
 	lokiValues := map[string]interface{}{}
 	lokiValues["authEnabled"] = false
 	lokiSeedStorage := resource.MustParse("100Gi")
 	lokiValues["storage"] = lokiSeedStorage
 
 	if err := seed.ResizeOrDeleteLokiDataVolumeIfStorageNotTheSame(ctx, a.logger, a.client, lokiSeedStorage); err != nil {
-		return err
+		return err, nil, nil
 	}
 
 	hvpaEnabled := ex.Spec.HvpaEnabled
@@ -135,18 +135,18 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 		maintenanceEnd := "230000-0000"
 		if err := a.client.Get(ctx, kutil.Key(metav1.NamespaceSystem, v1beta1constants.ConfigMapNameShootInfo), shootInfo); err != nil {
 			if !apierrors.IsNotFound(err) {
-				return err
+				return err, nil, nil
 			}
 		} else {
 			shootMaintenanceBegin, err := timewindow.ParseMaintenanceTime(shootInfo.Data["maintenanceBegin"])
 			if err != nil {
-				return err
+				return err, nil, nil
 			}
 			maintenanceBegin = shootMaintenanceBegin.Add(1, 0, 0).Formatted()
 
 			shootMaintenanceEnd, err := timewindow.ParseMaintenanceTime(shootInfo.Data["maintenanceEnd"])
 			if err != nil {
-				return err
+				return err, nil, nil
 			}
 			maintenanceEnd = shootMaintenanceEnd.Add(1, 0, 0).Formatted()
 		}
@@ -161,7 +161,7 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 
 		currentResources, err := kutil.GetContainerResourcesInStatefulSet(ctx, a.client, kutil.Key(ex.Namespace, "loki"))
 		if err != nil {
-			return err
+			return err, nil, nil
 		}
 		if len(currentResources) != 0 && currentResources["loki"] != nil {
 			lokiValues["resources"] = map[string]interface{}{
@@ -187,7 +187,7 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 	if err := a.client.List(ctx, existingConfigMaps,
 		client.InNamespace(v1beta1constants.GardenNamespace),
 		client.MatchingLabels{v1beta1constants.LabelExtensionConfiguration: v1beta1constants.LabelLogging}); err != nil {
-		return err
+		return err, nil, nil
 	}
 
 	// Need stable order before passing the dashboards to Grafana config to avoid unnecessary changes
@@ -232,10 +232,10 @@ func (a *seedActuator) Reconcile(ctx context.Context, _ logr.Logger, ex *extensi
 	}
 
 	if err := a.chart.Apply(ctx, a.chartApplier, ex.Namespace, a.imageVector, "", "", values); err != nil {
-		return err
+		return err, nil, nil
 	}
 
-	return nil
+	return nil, nil, nil
 }
 
 // Delete the Extension resource.
@@ -248,7 +248,7 @@ func (a *seedActuator) Delete(ctx context.Context, _ logr.Logger, ex *extensions
 }
 
 // Restore the Extension resource.
-func (a *seedActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) error {
+func (a *seedActuator) Restore(ctx context.Context, log logr.Logger, ex *extensionsv1alpha1.Logging, cluster *extensions.Cluster) (error, []extensionsv1alpha1.Unit, []extensionsv1alpha1.File) {
 	return a.Reconcile(ctx, log, ex, cluster)
 }
 

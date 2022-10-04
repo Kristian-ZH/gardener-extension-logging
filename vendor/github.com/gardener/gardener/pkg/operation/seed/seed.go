@@ -584,7 +584,7 @@ func RunReconcileSeedFlow(
 		// Need stable order before passing the dashboards to Grafana config to avoid unnecessary changes
 		kutil.ByName().Sort(existingConfigMaps)
 		modifyFilter := `
-    Name          modify
+	Name          modify
     Match         kubernetes.*
     Condition     Key_value_matches tag __PLACE_HOLDER__
     Add           __gardener_multitenant_id__ operator;user
