@@ -1,0 +1,196 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logging-extension-seed-monitoring-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    extensions.gardener.cloud/configuration: monitoring
+data:
+  scrape_config: |
+    - job_name: fluent-bit
+      honor_labels: false
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [ garden ]
+      relabel_configs:
+      - target_label: __metrics_path__
+        replacement: /api/v1/metrics/prometheus
+      - source_labels:
+        - __meta_kubernetes_service_name
+        - __meta_kubernetes_endpoint_port_name
+        action: keep
+        regex: fluent-bit;metrics
+      # common metrics
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [ __meta_kubernetes_pod_name ]
+        target_label: pod
+      metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        regex: ^(fluentbit_input_bytes_total|fluentbit_input_records_total|fluentbit_output_proc_bytes_total|fluentbit_output_proc_records_total|fluentbit_output_errors_total|fluentbit_output_retries_total|fluentbit_output_retries_failed_total|fluentbit_filter_add_records_total|fluentbit_filter_drop_records_total)$
+        action: keep
+
+    - job_name: fluent-bit-output-plugin
+      honor_labels: false
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [ garden ]
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_service_name
+        - __meta_kubernetes_endpoint_port_name
+        action: keep
+        regex: fluent-bit;metrics-plugin
+      # common metrics
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [ __meta_kubernetes_pod_name ]
+        target_label: pod
+      metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        regex: ^(promtail_dropped_entries_total|fluentbit_loki_gardener_errors_total|fluentbit_loki_gardener_logs_without_metadata_total|fluentbit_loki_gardener_incoming_logs_total|fluentbit_loki_gardener_incoming_logs_with_endpoint_total|fluentbit_loki_gardener_forwarded_logs_total|fluentbit_loki_gardener_dropped_logs_total)$
+        action: keep
+
+    - job_name: loki
+      honor_labels: false
+      kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [ garden ]
+      relabel_configs:
+      - source_labels:
+        - __meta_kubernetes_service_name
+        - __meta_kubernetes_endpoint_port_name
+        action: keep
+        regex: loki;metrics
+      # common metrics
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [ __meta_kubernetes_pod_name ]
+        target_label: pod
+      metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        regex: ^(loki_ingester_blocks_per_chunk_sum|loki_ingester_blocks_per_chunk_count|loki_ingester_chunk_age_seconds_sum|loki_ingester_chunk_age_seconds_count|loki_ingester_chunk_bounds_hours_sum|loki_ingester_chunk_bounds_hours_count|loki_ingester_chunk_compression_ratio_sum|loki_ingester_chunk_compression_ratio_count|loki_ingester_chunk_encode_time_seconds_sum|loki_ingester_chunk_encode_time_seconds_count|loki_ingester_chunk_entries_sum|loki_ingester_chunk_entries_count|loki_ingester_chunk_size_bytes_sum|loki_ingester_chunk_size_bytes_count|loki_ingester_chunk_utilization_sum|loki_ingester_chunk_utilization_count|loki_ingester_memory_chunks|loki_ingester_received_chunks|loki_ingester_samples_per_chunk_sum|loki_ingester_samples_per_chunk_count|loki_ingester_sent_chunks|loki_panic_total|loki_logql_querystats_duplicates_total|loki_logql_querystats_ingester_sent_lines_total|prometheus_target_scrapes_sample_out_of_order_total)$
+        action: keep
+
+  alerting_rules: |
+   flient-bit.rules.yaml: |
+      groups:
+        - name: fluent-bit.rules
+          rules:
+        
+          - alert: FluentBitDown
+            expr: |
+              absent(
+                up{job="fluent-bit"}
+                == 1
+              )
+            for: 15m
+            labels:
+              severity: warning
+              service: logging
+              type: seed
+              visibility: operator
+            annotations:
+              summary: Fluent-bit is down
+              description: >
+                There are no fluent-bit pods running on seed: {{`{{$externalLabels.seed}}`}}.
+                No logs will be collected.
+
+          - alert: FluentBitIdleInputPlugins
+            expr: |
+              sum by (pod) (
+                increase(
+                  fluentbit_input_bytes_total{pod=~"fluent-bit.*"}[4m]
+                )
+              ) == 0
+            for: 6h
+            labels:
+              severity: warning
+              service: logging
+              type: seed
+              visibility: operator
+            annotations:
+              summary: Fluent-bit input plugins haven't process any data for the past 6 hours
+              description: >
+                The input plugins of Fluent-bit pod {{`{{$labels.pod}}`}} running on seed {{`{{$externalLabels.seed}}`}} haven't collected any logs for the last 6 hours.
+
+          - alert: FluentBitReceivesLogsWithoutMetadata
+            expr: |
+              sum by (pod) (
+                increase(
+                  fluentbit_loki_gardener_logs_without_metadata_total[4m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+              service: logging
+              type: seed
+              visibility: operator
+            annotations:
+              summary: Fluent-bit receives logs without metadata
+              description: >
+                {{`{{$labels.pod}}`}} receives logs without metadata on seed:
+                {{`{{$externalLabels.seed}}`}}. These logs will be dropped.
+
+          - alert: FluentBitSendsOoOLogs
+            expr: |
+              sum by (pod) (
+                increase(
+                  prometheus_target_scrapes_sample_out_of_order_total[4m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+              service: logging
+              type: seed
+              visibility: operator
+            annotations:
+              summary: Fluent-bit sends OoO logs
+              description: >
+                {{`{{$labels.pod}}`}} on seed: {{`{{$externalLabels.seed}}`}} sends OutOfOrder logs
+                to the Loki. These logs will be dropped.
+
+          - alert: FluentBitGardenerLokiPluginErrors
+            expr: |
+              sum by (pod) (
+                increase(
+                  fluentbit_loki_gardener_errors_total[4m]
+                )
+              ) > 0
+            labels:
+              severity: warning
+              service: logging
+              type: seed
+              visibility: operator
+            annotations:
+              summary: Errors in Fluent-bit GardenerLoki plugin
+              description: >
+                There are errors in the {{`{{$labels.pod}}`}} GardenerLoki plugin on seed:
+                {{`{{$externalLabels.seed}}`}}.
+
+   loki.rules.yaml: |
+      groups:
+      - name: loki.rules
+        rules:
+        - alert: LokiDown
+          expr: absent(up{app="loki"} == 1)
+          for: 30m
+          labels:
+            service: logging
+            severity: warning
+            type: seed
+            visibility: operator
+          annotations:
+            description: "There are no loki pods running on seed: {{`{{ .ExternalLabels.seed }}`}}. No logs will be collected."
+            summary: Loki is down
+
+  dashboard_operators: |
+    fluent-bit-dashboard.json: |-
+{{ .Files.Get "fluent-bit-dashboard.json" | indent 6 }}
+    pod-logs-dashboard.json: |-
+{{ .Files.Get "pod-logs.json" | indent 6 }}
+    systemd-logs-dashboard.json: |-
+{{ .Files.Get "systemd-logs.json" | indent 6 }}

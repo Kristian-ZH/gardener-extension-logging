@@ -67,6 +67,12 @@ var (
 					{Type: &networkingv1.NetworkPolicy{}, Name: " allow-to-loki"},
 				},
 			},
+			{
+				Name: "monitoring",
+				Objects: []*chart.Object{
+					{Type: &corev1.ConfigMap{}, Name: "logging-extension-seed-monitoring-config"},
+				},
+			},
 		},
 	}
 )

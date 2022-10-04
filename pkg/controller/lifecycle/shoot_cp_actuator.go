@@ -56,6 +56,12 @@ var (
 					{Type: &networkingv1.Ingress{}, Name: "loki"},
 				},
 			},
+			{
+				Name: "monitoring",
+				Objects: []*chart.Object{
+					{Type: &corev1.ConfigMap{}, Name: "logging-extension-shoot-monitoring-config"},
+				},
+			},
 		},
 	}
 )
