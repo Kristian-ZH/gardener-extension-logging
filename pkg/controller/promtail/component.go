@@ -23,11 +23,14 @@ import (
 	"github.com/gardener/gardener/pkg/operation/botanist/component/extensions/operatingsystemconfig/original/components/docker"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	// UnitName is the name of the promtail service.
-	UnitName           = v1beta1constants.OperatingSystemConfigUnitNamePromtailService
+	UnitName           = "promtail.service"
 	unitNameFetchToken = "promtail-fetch-token.service"
 
 	// PathDirectory is the path for the promtail's directory.
@@ -51,14 +54,14 @@ const (
 	PositionFile = "/var/log/positions.yaml"
 )
 
-type component struct{}
+type promtail struct{}
 
 // New returns a new promtail component.
-func New() *component {
-	return &component{}
+func New() *promtail {
+	return &promtail{}
 }
 
-func (component) Name() string {
+func (promtail) Name() string {
 	return "promtail"
 }
 
@@ -66,7 +69,43 @@ func execStartPreCopyBinaryFromContainer(binaryName string, image *imagevector.I
 	return docker.PathBinary + ` run --rm -v ` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `:` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `:rw --entrypoint /bin/sh ` + image.String() + ` -c "cp /usr/bin/` + binaryName + ` ` + v1beta1constants.OperatingSystemConfigFilePathBinaries + `"`
 }
 
-func (component) Config(ctx context.Context, nodeLoggingEnabled bool, promtailImage *imagevector.Image, caBundle *corev1.Secret, lokiIngress, apiServerURL string) ([]extensionsv1alpha1.Unit, []extensionsv1alpha1.File, error) {
+func (promtail) GetResources(ctx context.Context, nodeLoggingEnabled bool, promtailImage *imagevector.Image, caBundle *corev1.Secret, lokiIngress, apiServerURL, namespace string) ([]client.Object, error) {
+	units, files, err := getConfig(ctx, nodeLoggingEnabled, promtailImage, caBundle, lokiIngress, apiServerURL)
+	if err != nil {
+		return nil, err
+	}
+
+	unitsData, err := yaml.Marshal(units)
+	if err != nil {
+		return nil, err
+	}
+
+	filesData, err := yaml.Marshal(files)
+	if err != nil {
+		return nil, err
+	}
+
+	promtailConfigMap := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "promtail-config",
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app":  "promtail",
+				"role": "logging",
+			},
+		},
+		BinaryData: map[string][]byte{
+			"promtailUnits": unitsData,
+			"promtailFiles": filesData,
+		},
+	}
+
+	resources := []client.Object{promtailConfigMap}
+
+	return resources, nil
+}
+
+func getConfig(ctx context.Context, nodeLoggingEnabled bool, promtailImage *imagevector.Image, caBundle *corev1.Secret, lokiIngress, apiServerURL string) ([]extensionsv1alpha1.Unit, []extensionsv1alpha1.File, error) {
 	if !nodeLoggingEnabled {
 		return []extensionsv1alpha1.Unit{
 			getPromtailUnit(

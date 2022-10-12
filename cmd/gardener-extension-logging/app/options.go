@@ -10,6 +10,7 @@ import (
 	loggingcmd "github.com/Kristian-ZH/gardener-extension-logging/pkg/cmd"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
 	controllercmd "github.com/gardener/gardener/extensions/pkg/controller/cmd"
+	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 )
 
 // ExtensionName is the name of the extension.
@@ -26,11 +27,25 @@ type Options struct {
 	healthOptions      *controllercmd.ControllerOptions
 	controllerSwitches *controllercmd.SwitchOptions
 	reconcileOptions   *controllercmd.ReconcilerOptions
+	webhookOptions     *webhookcmd.AddToManagerOptions
 	optionAggregator   controllercmd.OptionAggregator
 }
 
 // NewOptions creates a new Options instance.
 func NewOptions() *Options {
+	// options for the webhook server
+	webhookServerOptions := &webhookcmd.ServerOptions{
+		Namespace: os.Getenv("WEBHOOK_CONFIG_NAMESPACE"),
+	}
+
+	webhookSwitches := loggingcmd.WebhookSwitchOptions()
+	webhookOptions := webhookcmd.NewAddToManagerOptions(
+		ExtensionName,
+		"",
+		nil,
+		webhookServerOptions,
+		webhookSwitches,
+	)
 	options := &Options{
 		generalOptions: &controllercmd.GeneralOptions{},
 		restOptions:    &controllercmd.RESTOptions{},
@@ -40,6 +55,8 @@ func NewOptions() *Options {
 			LeaderElection:          true,
 			LeaderElectionID:        controllercmd.LeaderElectionNameID(ExtensionName),
 			LeaderElectionNamespace: os.Getenv("LEADER_ELECTION_NAMESPACE"),
+			WebhookServerPort:       443,
+			WebhookCertDir:          "/tmp/gardener-extensions-cert",
 			MetricsBindAddress:      ":8080",
 			HealthBindAddress:       ":8081",
 		},
@@ -58,6 +75,7 @@ func NewOptions() *Options {
 		reconcileOptions: &controllercmd.ReconcilerOptions{},
 		controllerSwitches: controllercmd.NewSwitchOptions(
 			controllercmd.Switch("logging_lifecycle_controller", lifecycle.AddToManager)),
+		webhookOptions: webhookOptions,
 	}
 
 	options.optionAggregator = controllercmd.NewOptionAggregator(
@@ -70,6 +88,7 @@ func NewOptions() *Options {
 		controllercmd.PrefixOption("healthcheck-", options.healthOptions),
 		options.controllerSwitches,
 		options.reconcileOptions,
+		options.webhookOptions,
 	)
 
 	return options

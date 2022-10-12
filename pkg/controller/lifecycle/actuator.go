@@ -23,11 +23,11 @@ import (
 // Actuator is the Actuator's interface
 type Actuator interface {
 	// Reconcile the Extension resource.
-	Reconcile(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) (error, []extensionsv1alpha1.Unit, []extensionsv1alpha1.File)
+	Reconcile(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 	// Delete the Extension resource.
 	Delete(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 	// Restore the Extension resource.
-	Restore(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) (error,  []extensionsv1alpha1.Unit, []extensionsv1alpha1.File)
+	Restore(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 	// Migrate the Extension resource.
 	Migrate(context.Context, logr.Logger, *extensionsv1alpha1.Logging, *extensions.Cluster) error
 }
@@ -61,7 +61,6 @@ func isShootNodeLoggingEnabled(config config.Configuration, shootPurpose *v1beta
 
 	allowedPurposes := config.ShootPurposesWithNodeLogging
 	for _, purpose := range allowedPurposes {
-		fmt.Println(string(*shootPurpose) + " " + purpose)
 		if string(*shootPurpose) == purpose {
 			return true
 		}

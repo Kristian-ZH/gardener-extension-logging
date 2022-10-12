@@ -49,5 +49,9 @@ config:
     - "evaluation"
     - "development"
   featureGates:
-    shootNodeLoggingEnabled: true
+    shootNodeLoggingEnabled: false
     eventLoggingEnabled: true
+
+webhookConfig:
+  servicePort: 443
+  serverPort: 10251

@@ -154,30 +154,19 @@ func (r *reconciler) reconcile(
 	}
 
 	log.Info("Starting the reconciliation of logging")
-	var units []extensionsv1alpha1.Unit
-	var files []extensionsv1alpha1.File
-	var err error
 	if logging.Spec.Type == "seed" {
-		if err, _, _ = r.seedActuator.Reconcile(ctx, log, logging, cluster); err != nil {
+		if err := r.seedActuator.Reconcile(ctx, log, logging, cluster); err != nil {
 			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
-		if err, units, files = r.shootActuator.Reconcile(ctx, log, logging, cluster); err != nil {
+		if err := r.shootActuator.Reconcile(ctx, log, logging, cluster); err != nil {
 			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), operationType, "Error reconciling Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	updateFilesAndUnitsFunc := func(status extensionsv1alpha1.Status) error {
-		loggingStatus := status.(*extensionsv1alpha1.LoggingStatus)
-		loggingStatus.Units = units
-		loggingStatus.Files = files
-
-		return nil
-	}
-
-	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, operationType, "Successfully reconciled Logging", updateFilesAndUnitsFunc); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, operationType, "Successfully reconciled Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -300,30 +289,19 @@ func (r *reconciler) restore(
 		return reconcile.Result{}, err
 	}
 
-	var units []extensionsv1alpha1.Unit
-	var files []extensionsv1alpha1.File
-	var err error
 	if logging.Spec.Type == "seed" {
-		if err, _, _ = r.seedActuator.Restore(ctx, log, logging, cluster); err != nil {
+		if err := r.seedActuator.Restore(ctx, log, logging, cluster); err != nil {
 			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	} else {
-		if err, units, files = r.shootActuator.Restore(ctx, log, logging, cluster); err != nil {
+		if err := r.shootActuator.Restore(ctx, log, logging, cluster); err != nil {
 			_ = r.statusUpdater.ErrorCustom(ctx, log, logging, reconcilerutils.ReconcileErrCauseOrErr(err), gardencorev1beta1.LastOperationTypeDelete, "Error restoring Logging", nil)
 			return reconcilerutils.ReconcileErr(err)
 		}
 	}
 
-	updateFilesAndUnitsFunc := func(status extensionsv1alpha1.Status) error {
-		loggingStatus := status.(*extensionsv1alpha1.LoggingStatus)
-		loggingStatus.Units = units
-		loggingStatus.Files = files
-
-		return nil
-	}
-
-	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored Logging", updateFilesAndUnitsFunc); err != nil {
+	if err := r.statusUpdater.SuccessCustom(ctx, log, logging, gardencorev1beta1.LastOperationTypeRestore, "Successfully restored Logging", nil); err != nil {
 		return reconcile.Result{}, err
 	}
 

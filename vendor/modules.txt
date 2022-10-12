@@ -70,7 +70,7 @@ github.com/gardener/dependency-watchdog/pkg/scaler/api
 github.com/gardener/etcd-druid/api/v1alpha1
 github.com/gardener/etcd-druid/api/validation
 github.com/gardener/etcd-druid/pkg/utils
-# github.com/gardener/gardener v1.55.0 => github.com/Kristian-ZH/gardener v1.2.1-0.20221003123721-1ad41debeb17
+# github.com/gardener/gardener v1.57.0 => github.com/Kristian-ZH/gardener v1.2.1-0.20221003123721-1ad41debeb17
 ## explicit; go 1.19
 github.com/gardener/gardener/charts
 github.com/gardener/gardener/extensions/pkg/apis/config
@@ -84,6 +84,12 @@ github.com/gardener/gardener/extensions/pkg/controller/healthcheck/general
 github.com/gardener/gardener/extensions/pkg/predicate
 github.com/gardener/gardener/extensions/pkg/util
 github.com/gardener/gardener/extensions/pkg/util/secret/manager
+github.com/gardener/gardener/extensions/pkg/webhook
+github.com/gardener/gardener/extensions/pkg/webhook/certificates
+github.com/gardener/gardener/extensions/pkg/webhook/cmd
+github.com/gardener/gardener/extensions/pkg/webhook/context
+github.com/gardener/gardener/extensions/pkg/webhook/controlplane/genericmutator
+github.com/gardener/gardener/extensions/pkg/webhook/shoot
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template

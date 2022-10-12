@@ -13,15 +13,24 @@ import (
 	controllerconfig "github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/config"
 	healthcheckcontroller "github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/healthcheck"
 	"github.com/Kristian-ZH/gardener-extension-logging/pkg/controller/lifecycle"
+	webhook "github.com/Kristian-ZH/gardener-extension-logging/pkg/webhook/osc"
 	healthcheckconfig "github.com/gardener/gardener/extensions/pkg/apis/config"
 	"github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	extensionshealthcheckcontroller "github.com/gardener/gardener/extensions/pkg/controller/healthcheck"
+	webhookcmd "github.com/gardener/gardener/extensions/pkg/webhook/cmd"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
+
+// WebhookSwitchOptions are the webhookcmd.SwitchOptions for the logging webhooks.
+func WebhookSwitchOptions() *webhookcmd.SwitchOptions {
+	return webhookcmd.NewSwitchOptions(
+		webhookcmd.Switch("logging", webhook.New),
+	)
+}
 
 var (
 	scheme  *runtime.Scheme
